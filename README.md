@@ -1,16 +1,30 @@
-# React + Vite
+# Corizo Desk — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite SPA for Corizo Desk lead management.
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+cp .env.example .env
+npm install
+npm run dev
+```
 
-## React Compiler
+By default Vite proxies `/api` to `http://localhost:5000`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Deploy on Vercel (GitHub)
 
-## Expanding the ESLint configuration
+1. Import **`corizo-desk-frontend`** in Vercel.
+2. Framework preset: **Vite** (auto-detected).
+3. Root directory: repository root (this project).
+4. Build command: `npm run build`
+5. Output directory: `dist`
+6. Add environment variable:
+   - **`VITE_API_URL`** = `https://YOUR_BACKEND_HOST/api`  
+     Example: `https://corizo-desk-api.onrender.com/api`
+7. Deploy.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Also set your backend **`FRONTEND_URL`** to the Vercel site URL  
+(e.g. `https://corizo-desk.vercel.app`) so CORS and auth cookies work.
+
+`vercel.json` is included for client-side routing (`/leads/:id`, etc.).
