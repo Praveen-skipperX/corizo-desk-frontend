@@ -39,7 +39,8 @@ import { ENABLE_DEPARTMENTS } from '@/lib/features';
 export default function DashboardPage() {
   const { user } = useSelector((state) => state.auth);
   const { data, isLoading, error } = useGetDashboardQuery(undefined, {
-    refetchOnMountOrArgChange: true,
+    // Reuse cached dashboard for 60s when navigating back
+    refetchOnMountOrArgChange: 60,
   });
   const [editLead, setEditLead] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);

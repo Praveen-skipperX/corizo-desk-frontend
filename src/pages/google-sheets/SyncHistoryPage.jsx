@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/layout/Header';
 import GoogleSheetsTabs from '@/components/google-sheets/GoogleSheetsTabs';
 import { DataTable } from '@/components/ui/data-table';
@@ -16,13 +16,13 @@ export default function SyncHistoryPage() {
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState([{ id: 'createdAt', desc: true }]);
   const [busyId, setBusyId] = useState('');
+  const [pollActive, setPollActive] = useState(false);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useGetConnectorSyncLogsQuery(
     { page, limit: 30 },
     {
-      refetchOnMountOrArgChange: true,
-      // Refresh while jobs may still be running so Cancel / status stay current
-      pollingInterval: 5000,
+      refetchOnMountOrArgChange: 30,
+      pollingInterval: pollActive ? 5000 : 0,
     }
   );
   const [cancelSync] = useCancelSyncLogMutation();
@@ -33,6 +33,10 @@ export default function SyncHistoryPage() {
   const showLoading = isLoading || (isFetching && !data);
   const showError = isError && !data;
   const hasActive = logs.some((l) => l.status === 'pending' || l.status === 'running');
+
+  useEffect(() => {
+    setPollActive(hasActive);
+  }, [hasActive]);
 
   const handleCancel = async (id) => {
     setBusyId(String(id));

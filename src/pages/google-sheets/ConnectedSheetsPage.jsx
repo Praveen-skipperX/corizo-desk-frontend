@@ -61,7 +61,7 @@ export default function ConnectedSheetsPage() {
     isError: sheetsError,
     error: sheetsErr,
     refetch,
-  } = useGetConnectorsQuery({ limit: 100 }, { refetchOnMountOrArgChange: true });
+  } = useGetConnectorsQuery({ limit: 100 }, { refetchOnMountOrArgChange: 60 });
   const {
     data: dashData,
     isLoading: dashLoading,
@@ -69,7 +69,7 @@ export default function ConnectedSheetsPage() {
     isError: dashError,
     error: dashErr,
     refetch: refetchDash,
-  } = useGetConnectorDashboardQuery(undefined, { refetchOnMountOrArgChange: true });
+  } = useGetConnectorDashboardQuery(undefined, { refetchOnMountOrArgChange: 60 });
   const [syncConnector] = useSyncConnectorMutation();
   const [syncAll, { isLoading: syncingAll }] = useSyncAllConnectorsMutation();
   const [disableConnector] = useDisableConnectorMutation();

@@ -288,7 +288,7 @@ export default function SyncProgressDock() {
       if (invalidatedRef.current.has(id)) return;
       invalidatedRef.current.add(id);
       dispatch(
-        apiSlice.util.invalidateTags(['Lead', 'Dashboard', 'FollowUp', 'Connector', 'ConnectorSyncLog'])
+        apiSlice.util.invalidateTags(['Lead', 'FollowUp', 'Connector', 'ConnectorSyncLog'])
       );
     });
   }, [finishedTracked, dispatch]);

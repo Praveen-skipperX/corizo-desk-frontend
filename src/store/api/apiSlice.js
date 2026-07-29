@@ -55,12 +55,17 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
+  // Avoid refetching the whole app on every route change / window focus.
+  refetchOnFocus: false,
+  refetchOnReconnect: true,
+  refetchOnMountOrArgChange: 60,
+  keepUnusedDataFor: 120,
   tagTypes: ['Lead', 'FollowUp', 'User', 'Department', 'Course', 'Dashboard', 'Activity', 'Settings', 'AppSettings', 'Connector', 'ConnectorSyncLog', 'MappingTemplate'],
   endpoints: (builder) => ({
     getDashboard: builder.query({
       query: () => '/dashboard/dashboard',
       providesTags: ['Dashboard'],
-      keepUnusedDataFor: 0,
+      keepUnusedDataFor: 120,
     }),
     getLeads: builder.query({
       query: (params) => ({ url: '/leads', params }),
@@ -68,10 +73,12 @@ export const apiSlice = createApi({
         result?.data
           ? [...result.data.map(({ _id }) => ({ type: 'Lead', id: _id })), { type: 'Lead', id: 'LIST' }]
           : [{ type: 'Lead', id: 'LIST' }],
+      keepUnusedDataFor: 60,
     }),
     getLead: builder.query({
       query: (id) => `/leads/${id}`,
       providesTags: (result, error, id) => [{ type: 'Lead', id }],
+      keepUnusedDataFor: 60,
     }),
     createLead: builder.mutation({
       query: (body) => ({ url: '/leads', method: 'POST', body }),
@@ -96,26 +103,32 @@ export const apiSlice = createApi({
     getFollowUps: builder.query({
       query: (params) => ({ url: '/follow-ups', params }),
       providesTags: ['FollowUp'],
+      keepUnusedDataFor: 60,
     }),
     getFollowUpSummary: builder.query({
       query: () => '/follow-ups/summary',
       providesTags: ['FollowUp'],
+      keepUnusedDataFor: 60,
     }),
     getFollowUpDashboard: builder.query({
       query: () => '/leads/follow-ups/dashboard',
       providesTags: ['FollowUp', 'Dashboard'],
+      keepUnusedDataFor: 60,
     }),
     getUsers: builder.query({
       query: (params) => ({ url: '/users', params }),
       providesTags: ['User'],
+      keepUnusedDataFor: 180,
     }),
     getDepartments: builder.query({
       query: () => '/users/departments',
       providesTags: ['Department'],
+      keepUnusedDataFor: 300,
     }),
     getCourses: builder.query({
       query: (params) => ({ url: '/courses', params }),
       providesTags: ['Course'],
+      keepUnusedDataFor: 180,
     }),
     getActivityLogs: builder.query({
       query: (params) => ({ url: '/dashboard/activity-logs', params }),
@@ -131,6 +144,7 @@ export const apiSlice = createApi({
     getAppSettings: builder.query({
       query: () => '/settings/app',
       providesTags: ['AppSettings'],
+      keepUnusedDataFor: 300,
     }),
     updateAppSettings: builder.mutation({
       query: (body) => ({ url: '/settings/app', method: 'PATCH', body }),
@@ -150,6 +164,7 @@ export const apiSlice = createApi({
     }),
     getExportConfig: builder.query({
       query: () => '/exports/config',
+      keepUnusedDataFor: 300,
     }),
     getConnectors: builder.query({
       query: (params) => ({ url: '/connectors', params: { type: 'google_sheets', ...params } }),
@@ -157,10 +172,12 @@ export const apiSlice = createApi({
         result?.data
           ? [...result.data.map(({ _id }) => ({ type: 'Connector', id: _id })), { type: 'Connector', id: 'LIST' }]
           : [{ type: 'Connector', id: 'LIST' }],
+      keepUnusedDataFor: 60,
     }),
     getConnectorDashboard: builder.query({
       query: () => ({ url: '/connectors/dashboard', params: { type: 'google_sheets' } }),
       providesTags: ['Connector', 'ConnectorSyncLog'],
+      keepUnusedDataFor: 60,
     }),
     getConnector: builder.query({
       query: (id) => `/connectors/${id}`,
@@ -202,9 +219,11 @@ export const apiSlice = createApi({
     getMappingTemplates: builder.query({
       query: () => ({ url: '/connectors/templates', params: { type: 'google_sheets' } }),
       providesTags: ['MappingTemplate'],
+      keepUnusedDataFor: 180,
     }),
     getGoogleSheetsSetup: builder.query({
       query: () => '/connectors/setup',
+      keepUnusedDataFor: 300,
     }),
     createConnector: builder.mutation({
       query: (body) => ({ url: '/connectors', method: 'POST', body: { type: 'google_sheets', ...body } }),
