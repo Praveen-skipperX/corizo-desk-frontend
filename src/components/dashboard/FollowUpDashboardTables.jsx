@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Phone,
   Clock,
-  X,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,7 +45,7 @@ const SECTION_CONFIG = {
   },
 };
 
-function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete, onCancel }) {
+function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -79,15 +78,6 @@ function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete
       </Button>
       <Button variant="outline" size="icon" className="h-7 w-7 border-emerald-200 bg-emerald-50 text-emerald-700" title="Mark completed" onClick={() => onComplete(lead)}>
         <CheckCircle2 className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-7 w-7 border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
-        title="Cancel next follow-up"
-        onClick={() => onCancel(lead)}
-      >
-        <X className="h-3.5 w-3.5" />
       </Button>
     </div>
   );
@@ -204,30 +194,18 @@ export default function FollowUpDashboardTables({ onEditLead }) {
   const [updateLead] = useUpdateLeadMutation();
   const dashboard = data?.data || {};
 
-  const clearNextFollowUp = async (lead, { completed }) => {
+  const handleComplete = async (lead) => {
     try {
       await updateLead({
         id: lead._id,
         nextFollowUpDate: null,
         status: lead.status === 'follow_up' ? 'connected' : lead.status,
       }).unwrap();
-      toast.success(
-        completed ? 'Follow-up completed' : 'Next follow-up cancelled',
-        lead.leadId || lead.name
-      );
+      toast.success('Follow-up completed', lead.leadId || lead.name);
       refetch();
     } catch (err) {
-      toast.error(
-        completed ? 'Could not complete follow-up' : 'Could not cancel follow-up',
-        err.data?.message || err.message
-      );
+      toast.error('Could not complete follow-up', err.data?.message || err.message);
     }
-  };
-
-  const handleComplete = (lead) => clearNextFollowUp(lead, { completed: true });
-  const handleCancel = (lead) => {
-    if (!window.confirm(`Cancel next follow-up for ${lead.name || lead.leadId}?`)) return;
-    clearNextFollowUp(lead, { completed: false });
   };
 
   if (isLoading) {
@@ -258,7 +236,6 @@ export default function FollowUpDashboardTables({ onEditLead }) {
             variant={section.key}
             onEdit={onEditLead}
             onComplete={handleComplete}
-            onCancel={handleCancel}
           />
         </div>
       ))}
