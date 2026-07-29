@@ -55,10 +55,10 @@ export default function SyncSheetsButton({ onSynced }) {
 
   const trackFromResponse = (payload) => {
     const ids = [];
-    if (payload?.syncLogId) ids.push(payload.syncLogId);
+    if (payload?.syncLogId) ids.push(String(payload.syncLogId));
     if (Array.isArray(payload?.jobs)) {
       payload.jobs.forEach((j) => {
-        if (j.syncLogId) ids.push(j.syncLogId);
+        if (j.syncLogId) ids.push(String(j.syncLogId));
       });
     }
     if (ids.length) dispatch(trackSyncJobs(ids));
@@ -69,7 +69,7 @@ export default function SyncSheetsButton({ onSynced }) {
     setSyncingId(id);
     try {
       const res = await syncConnector(id).unwrap();
-      trackFromResponse(res.data);
+      trackFromResponse(res?.data || res);
       setOpen(false);
       onSynced?.();
     } catch (err) {
@@ -90,7 +90,7 @@ export default function SyncSheetsButton({ onSynced }) {
     }
     try {
       const res = await syncAll().unwrap();
-      trackFromResponse(res.data);
+      trackFromResponse(res?.data || res);
       setOpen(false);
       onSynced?.();
     } catch (err) {

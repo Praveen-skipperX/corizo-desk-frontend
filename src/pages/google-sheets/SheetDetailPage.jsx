@@ -57,7 +57,8 @@ export default function SheetDetailPage() {
   const handleSync = async () => {
     try {
       const res = await syncConnector(id).unwrap();
-      if (res.data?.syncLogId) dispatch(trackSyncJobs([res.data.syncLogId]));
+      const syncLogId = res?.data?.syncLogId || res?.syncLogId;
+      if (syncLogId) dispatch(trackSyncJobs([String(syncLogId)]));
       refetch();
       refetchHealth();
     } catch (err) {

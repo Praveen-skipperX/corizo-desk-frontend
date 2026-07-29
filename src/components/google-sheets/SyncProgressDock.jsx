@@ -64,7 +64,7 @@ function estimateRemainingMs(item) {
   return (total - done) / rate;
 }
 
-function ProgressRow({ item, now, onPause, onCancel, busyId }) {
+function ProgressRow({ item, now, onPause, onCancel, busyId, canControl }) {
   const total = Number(item.totalToProcess) || 0;
   const done = Number(item.processedCount) || 0;
   const rowsFound = Number(item.rowsFound) || 0;
@@ -138,28 +138,30 @@ function ProgressRow({ item, now, onPause, onCancel, busyId }) {
         <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-muted-foreground">
           {detailParts.join(' · ')}
         </p>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onPause(id)}
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            title="Pause sync"
-          >
-            <Pause className="h-3 w-3" />
-            Pause
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onCancel(id)}
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
-            title="Cancel sync"
-          >
-            <Ban className="h-3 w-3" />
-            Cancel
-          </button>
-        </div>
+        {canControl && (
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onPause(id)}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+              title="Pause sync"
+            >
+              <Pause className="h-3 w-3" />
+              Pause
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onCancel(id)}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+              title="Cancel sync"
+            >
+              <Ban className="h-3 w-3" />
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -185,12 +187,14 @@ export default function SyncProgressDock() {
   const [cancelSync] = useCancelSyncLogMutation();
   const [cancelActive] = useCancelActiveSyncsMutation();
 
-  const shouldPoll =
-    canView && (trackedIds.length > 0 || (storedActive && storedActive.length > 0));
+  // Always poll when user can view sheets so live jobs show even after refresh /
+  // cancel-all cleared session tracking. Faster while this session started a sync.
+  const shouldPoll = canView;
+  const pollFast = trackedIds.length > 0 || (storedActive && storedActive.length > 0);
 
   const { data, isFetching, isError, error, refetch } = useGetSyncProgressQuery(undefined, {
     skip: !shouldPoll,
-    pollingInterval: shouldPoll ? 2500 : 0,
+    pollingInterval: shouldPoll ? (pollFast ? 2500 : 8000) : 0,
     refetchOnMountOrArgChange: shouldPoll,
   });
 
@@ -237,19 +241,21 @@ export default function SyncProgressDock() {
   }, [isError, error, trackedIds.length, storedActive]);
 
   const rawActive = data?.data?.active || storedActive || [];
+  // Show every active job (not only session-tracked) so the dock works after refresh.
+  // Only hide long-abandoned queue ghosts that never started.
   const activeItems = rawActive.filter((item) => {
-    if (trackedIds.length > 0 && !trackedIds.includes(String(item.syncLogId))) return false;
     const startedMs = item.startedAt ? new Date(item.startedAt).getTime() : 0;
     const elapsed = startedMs ? Date.now() - startedMs : 0;
     const stuckInQueue =
       item.status === 'pending'
       && (item.phase === 'queued' || !item.phase)
-      && elapsed > 90_000
+      && elapsed > 120_000
       && !(Number(item.processedCount) > 0);
     return !stuckInQueue;
   });
   const recentItems = data?.data?.recent || [];
   const hasActive = activeItems.length > 0;
+  const isStarting = trackedIds.length > 0 && !hasActive && !(data?.data);
 
   const isAbandonedQueueFailure = (r) => {
     if (r.status !== 'failed' && r.status !== 'cancelled' && r.status !== 'paused') return false;
@@ -329,7 +335,7 @@ export default function SyncProgressDock() {
   };
 
   if (!canView) return null;
-  if (!hasActive && finishedTracked.length === 0 && !pollError) return null;
+  if (!hasActive && finishedTracked.length === 0 && !pollError && !isStarting) return null;
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[min(100%-2rem,24rem)] flex-col gap-2">
@@ -353,14 +359,16 @@ export default function SyncProgressDock() {
         </div>
       )}
 
-      {hasActive && !noticeDismissed && (
+      {(hasActive || isStarting) && !noticeDismissed && (
         <div className="pointer-events-auto rounded-xl border border-primary/25 bg-white p-3 shadow-elevated dark:bg-card">
           <div className="flex items-start gap-2.5">
             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-              <RefreshCw className={cn('h-4 w-4 text-primary', isFetching && 'animate-spin')} />
+              <RefreshCw className={cn('h-4 w-4 text-primary', (isFetching || isStarting) && 'animate-spin')} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">Syncing in the background</p>
+              <p className="text-sm font-semibold text-foreground">
+                {isStarting && !hasActive ? 'Starting sync…' : 'Syncing in the background'}
+              </p>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                 You can pause or cancel anytime, then start a fresh sync.
               </p>
@@ -377,12 +385,12 @@ export default function SyncProgressDock() {
         </div>
       )}
 
-      {(hasActive || finishedTracked.length > 0) && (
+      {(hasActive || finishedTracked.length > 0 || isStarting) && (
         <div className="pointer-events-auto overflow-hidden rounded-xl border border-border bg-white shadow-elevated dark:bg-card">
           <div className="flex items-center gap-2 border-b border-border/80 bg-muted/40 px-3 py-2">
-            <Loader2 className={cn('h-3.5 w-3.5 text-primary', hasActive && 'animate-spin')} />
+            <Loader2 className={cn('h-3.5 w-3.5 text-primary', (hasActive || isStarting) && 'animate-spin')} />
             <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              {hasActive ? 'Live sheet sync' : 'Sync finished'}
+              {hasActive || isStarting ? 'Live sheet sync' : 'Sync finished'}
             </span>
             {hasActive && canControl && (
               <button
@@ -396,12 +404,16 @@ export default function SyncProgressDock() {
             )}
           </div>
           <div className="space-y-3 p-3">
+            {isStarting && !hasActive && (
+              <p className="text-sm text-muted-foreground">Preparing sync progress…</p>
+            )}
             {activeItems.map((item) => (
               <ProgressRow
                 key={item.syncLogId}
                 item={item}
                 now={now}
                 busyId={busyId}
+                canControl={canControl}
                 onPause={handlePause}
                 onCancel={handleCancel}
               />

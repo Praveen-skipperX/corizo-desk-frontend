@@ -39,28 +39,15 @@ const syncProgressSlice = createSlice({
       const next = [...new Set([...state.trackedIds, ...ids])];
       state.trackedIds = next;
       state.noticeDismissed = false;
+      // Drop from seen so a re-synced id can show completion again
+      state.seenCompletedIds = state.seenCompletedIds.filter((id) => !ids.includes(id));
       persistTrackedIds(next);
     },
     setSyncProgressSnapshot(state, action) {
-      const active = action.payload?.active || [];
-      const recent = action.payload?.recent || [];
-      state.active = active;
-      state.recent = recent;
-
-      // When the API reports real activity/completions, drop IDs that are no longer
-      // in either list (finished outside the recent window). Skip when both lists
-      // are empty — a just-queued job may not appear on the first poll yet.
-      const keep = new Set([
-        ...active.map((a) => String(a.syncLogId)),
-        ...recent.map((r) => String(r.syncLogId)),
-      ]);
-      if (keep.size > 0) {
-        const nextTracked = state.trackedIds.filter((id) => keep.has(id));
-        if (nextTracked.length !== state.trackedIds.length) {
-          state.trackedIds = nextTracked;
-          persistTrackedIds(nextTracked);
-        }
-      }
+      state.active = action.payload?.active || [];
+      state.recent = action.payload?.recent || [];
+      // Do not prune trackedIds here — a just-queued job can miss the first poll
+      // while recent still has older cancelled/failed rows, which used to wipe the new id.
     },
     dismissSyncNotice(state) {
       state.noticeDismissed = true;
