@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Shield, Clock, Activity, GraduationCap, Pencil, UserPlus, Phone, Mail, Link2, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Shield, Clock, Activity, GraduationCap, Pencil, UserPlus, Phone, Mail, Link2, Trash2, Loader2, X } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import LoadingButton from '@/components/ui/loading-button';
 import { Button } from '@/components/ui/button';
@@ -250,6 +250,25 @@ export default function LeadDetailPage() {
     }
   };
 
+  const cancelNextFollowUp = async () => {
+    if (!lead?.nextFollowUpDate) return;
+    if (!window.confirm('Cancel the next follow-up for this lead?')) return;
+    setActionLoading('cancel-follow-up');
+    try {
+      await updateLead({
+        id,
+        nextFollowUpDate: null,
+        status: lead.status === 'follow_up' ? 'connected' : lead.status,
+      }).unwrap();
+      toast.success('Next follow-up cancelled');
+      refetch();
+    } catch (err) {
+      toast.error('Could not cancel follow-up', err?.data?.message || err.message);
+    } finally {
+      setActionLoading('');
+    }
+  };
+
   if (isLoading) {
     return (
       <div>
@@ -338,9 +357,20 @@ export default function LeadDetailPage() {
                     { left: { label: 'Lead Date', value: formatLeadGettingDate(lead) }, right: {
                       label: 'Follow-up',
                       children: lead.nextFollowUpDate ? (
-                        <span className="inline-flex flex-wrap items-baseline gap-x-1.5 text-sm">
+                        <span className="inline-flex flex-wrap items-center gap-x-1.5 text-sm">
                           <span className="font-medium tabular-nums">{formatDateTime(lead.nextFollowUpDate)}</span>
                           <FollowUpCountdown date={lead.nextFollowUpDate} />
+                          <button
+                            type="button"
+                            title="Cancel next follow-up"
+                            disabled={actionLoading === 'cancel-follow-up'}
+                            onClick={cancelNextFollowUp}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                          >
+                            {actionLoading === 'cancel-follow-up'
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <X className="h-3 w-3" />}
+                          </button>
                         </span>
                       ) : '—',
                     } },
@@ -685,11 +715,22 @@ export default function LeadDetailPage() {
                     Next Follow-up
                   </label>
                   {lead.nextFollowUpDate && (
-                    <p className="flex flex-wrap items-baseline gap-x-1.5 text-sm">
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-sm">
                       <span className="font-medium tabular-nums text-foreground">
                         {formatDateTime(lead.nextFollowUpDate)}
                       </span>
                       <FollowUpCountdown date={lead.nextFollowUpDate} />
+                      <button
+                        type="button"
+                        title="Cancel next follow-up"
+                        disabled={actionLoading === 'cancel-follow-up'}
+                        onClick={cancelNextFollowUp}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                      >
+                        {actionLoading === 'cancel-follow-up'
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <X className="h-3 w-3" />}
+                      </button>
                     </p>
                   )}
                   <DateTimePicker

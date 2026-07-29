@@ -24,6 +24,7 @@ import {
   useGetCoursesQuery,
   useBulkSoftDeleteLeadsMutation,
   useSoftDeleteAllLeadsMutation,
+  useUpdateLeadMutation,
 } from '@/store/api/apiSlice';
 import { cn, formatDateTime, formatLeadGettingDate, formatCourseLabel, getLeadGettingDate, LEAD_STATUSES, LEAD_SOURCES, PRIORITY_CONFIG, ROLES } from '@/lib/utils';
 import { ENABLE_DEPARTMENTS } from '@/lib/features';
@@ -85,6 +86,8 @@ export default function LeadsPage() {
 
   const [bulkSoftDeleteLeads] = useBulkSoftDeleteLeadsMutation();
   const [softDeleteAllLeads] = useSoftDeleteAllLeadsMutation();
+  const [updateLead] = useUpdateLeadMutation();
+  const [cancellingFollowUpId, setCancellingFollowUpId] = useState('');
 
   const sortBy = sorting[0]?.id || 'createdAt';
   const sortOrder = sorting[0]?.desc ? 'desc' : 'asc';
@@ -140,6 +143,25 @@ export default function LeadsPage() {
   const openFollowUp = (lead) => {
     setFollowUpLead(lead);
     setFollowUpOpen(true);
+  };
+
+  const cancelNextFollowUp = async (lead) => {
+    if (!lead?.nextFollowUpDate) return;
+    if (!window.confirm(`Cancel next follow-up for ${lead.name || lead.leadId}?`)) return;
+    setCancellingFollowUpId(String(lead._id));
+    try {
+      await updateLead({
+        id: lead._id,
+        nextFollowUpDate: null,
+        status: lead.status === 'follow_up' ? 'connected' : lead.status,
+      }).unwrap();
+      toast.success('Next follow-up cancelled', lead.leadId || lead.name);
+      refetch();
+    } catch (err) {
+      toast.error('Could not cancel follow-up', err?.data?.message || err?.message);
+    } finally {
+      setCancellingFollowUpId('');
+    }
   };
 
   useEffect(() => {
@@ -393,12 +415,29 @@ export default function LeadsPage() {
       {
         accessorKey: 'nextFollowUpDate',
         header: 'Next Follow-up',
-        size: 140,
-        cell: ({ row }) => (
-          row.original.nextFollowUpDate
-            ? formatDateTime(row.original.nextFollowUpDate)
-            : '—'
-        ),
+        size: 160,
+        cell: ({ row }) => {
+          const lead = row.original;
+          if (!lead.nextFollowUpDate) return '—';
+          const busy = cancellingFollowUpId === String(lead._id);
+          return (
+            <span className="inline-flex items-center gap-1">
+              <span className="tabular-nums">{formatDateTime(lead.nextFollowUpDate)}</span>
+              <button
+                type="button"
+                title="Cancel next follow-up"
+                disabled={busy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelNextFollowUp(lead);
+                }}
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+              >
+                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+              </button>
+            </span>
+          );
+        },
       },
       {
         id: 'actions',
@@ -463,7 +502,7 @@ export default function LeadsPage() {
     );
 
     return cols;
-  }, [isAdmin, page]);
+  }, [isAdmin, page, cancellingFollowUpId]);
 
   const skeletonColCount = isAdmin ? 11 : 10;
 
