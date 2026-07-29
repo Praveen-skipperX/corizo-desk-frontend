@@ -201,14 +201,48 @@ export default function SyncProgressDock() {
     setPollError(String(msg));
   }, [isError, error, trackedIds.length, storedActive]);
 
-  const activeItems = data?.data?.active || storedActive || [];
+  const rawActive = data?.data?.active || storedActive || [];
+  // Only show syncs started in this browser session — hide abandoned queue ghosts.
+  const activeItems = rawActive.filter((item) => {
+    if (trackedIds.length > 0 && !trackedIds.includes(String(item.syncLogId))) return false;
+    const startedMs = item.startedAt ? new Date(item.startedAt).getTime() : 0;
+    const elapsed = startedMs ? Date.now() - startedMs : 0;
+    const stuckInQueue =
+      item.status === 'pending'
+      && (item.phase === 'queued' || !item.phase)
+      && elapsed > 90_000
+      && !(Number(item.processedCount) > 0);
+    return !stuckInQueue;
+  });
   const recentItems = data?.data?.recent || [];
   const hasActive = activeItems.length > 0;
 
+  const isAbandonedQueueFailure = (r) => {
+    if (r.status !== 'failed' && r.status !== 'cancelled') return false;
+    if ((r.processedCount || 0) > 0 || r.importedCount || r.updatedCount) return false;
+    return /never started|queue abandoned|timed out or stalled|waiting for worker/i.test(
+      r.errorSummary || ''
+    );
+  };
+
   const finishedTracked = recentItems.filter((r) => {
     const id = String(r.syncLogId);
-    return trackedIds.includes(id) && !seenCompletedIds.includes(id);
+    if (!trackedIds.includes(id) || seenCompletedIds.includes(id)) return false;
+    // Silently drop GC'd pre-fix queue failures — don't clutter the dock.
+    if (isAbandonedQueueFailure(r)) return false;
+    return true;
   });
+
+  // Prune abandoned failures from session tracking without showing a toast.
+  useEffect(() => {
+    recentItems.forEach((item) => {
+      const id = String(item.syncLogId);
+      if (!trackedIds.includes(id) || seenCompletedIds.includes(id)) return;
+      if (isAbandonedQueueFailure(item)) {
+        dispatch(markCompletedSeen(id));
+      }
+    });
+  }, [recentItems, trackedIds, seenCompletedIds, dispatch]);
 
   useEffect(() => {
     finishedTracked.forEach((item) => {
