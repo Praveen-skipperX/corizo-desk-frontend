@@ -5,22 +5,51 @@ import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { useGetConnectorSyncLogsQuery } from '@/store/api/apiSlice';
+import {
+  useGetConnectorSyncLogsQuery,
+  useCancelSyncLogMutation,
+  useCancelActiveSyncsMutation,
+} from '@/store/api/apiSlice';
 import { cn, formatDateTime, formatDuration } from '@/lib/utils';
 
 export default function SyncHistoryPage() {
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState([{ id: 'createdAt', desc: true }]);
+  const [busyId, setBusyId] = useState('');
 
   const { data, isLoading, isFetching, isError, error, refetch } = useGetConnectorSyncLogsQuery(
     { page, limit: 30 },
     { refetchOnMountOrArgChange: true }
   );
+  const [cancelSync] = useCancelSyncLogMutation();
+  const [cancelActive, { isLoading: cancellingAll }] = useCancelActiveSyncsMutation();
 
   const logs = data?.data || [];
   const pagination = data?.pagination;
   const showLoading = isLoading || (isFetching && !data);
   const showError = isError && !data;
+  const hasActive = logs.some((l) => l.status === 'pending' || l.status === 'running');
+
+  const handleCancel = async (id) => {
+    setBusyId(String(id));
+    try {
+      await cancelSync(id).unwrap();
+      refetch();
+    } catch (err) {
+      alert(err?.data?.message || err.message || 'Cancel failed');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const handleCancelAll = async () => {
+    try {
+      await cancelActive().unwrap();
+      refetch();
+    } catch (err) {
+      alert(err?.data?.message || err.message || 'Cancel failed');
+    }
+  };
 
   const columns = useMemo(
     () => [
@@ -75,10 +104,10 @@ export default function SyncHistoryPage() {
         size: 100,
         cell: ({ row }) => {
           const log = row.original;
-          if (log.status === 'failed') {
+          if (log.status === 'failed' || log.status === 'cancelled' || log.status === 'paused') {
             return (
-              <span className="line-clamp-2 text-xs text-destructive" title={log.errorSummary || 'Failed'}>
-                {log.errorSummary || 'Failed'}
+              <span className="line-clamp-2 text-xs text-destructive" title={log.errorSummary || log.status}>
+                {log.errorSummary || log.status}
               </span>
             );
           }
@@ -98,12 +127,38 @@ export default function SyncHistoryPage() {
         cell: ({ row }) => {
           const status = row.original.status;
           const variant =
-            status === 'completed' ? 'success' : status === 'failed' ? 'destructive' : 'default';
+            status === 'completed'
+              ? 'success'
+              : status === 'failed' || status === 'cancelled'
+                ? 'destructive'
+                : 'default';
           return <Badge variant={variant}>{status}</Badge>;
         },
       },
+      {
+        id: 'actions',
+        header: '',
+        size: 100,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const log = row.original;
+          if (log.status !== 'pending' && log.status !== 'running') return null;
+          return (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs text-destructive"
+              disabled={busyId === String(log._id)}
+              onClick={() => handleCancel(log._id)}
+            >
+              Cancel
+            </Button>
+          );
+        },
+      },
     ],
-    []
+    [busyId]
   );
 
   return (
@@ -112,6 +167,22 @@ export default function SyncHistoryPage() {
 
       <div className="flex-1 space-y-4 p-4 sm:p-6">
         <GoogleSheetsTabs />
+
+        {hasActive && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+            <span>Active sync(s) in progress. You can cancel and start a fresh sync.</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 text-destructive"
+              disabled={cancellingAll}
+              onClick={handleCancelAll}
+            >
+              Cancel all
+            </Button>
+          </div>
+        )}
 
         {isError && data && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -122,59 +193,28 @@ export default function SyncHistoryPage() {
           </div>
         )}
 
-        {showLoading ? (
-          <TableSkeleton rows={10} cols={8} />
-        ) : showError ? (
-          <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-white px-6 py-12 text-center shadow-card">
-            <p className="text-sm font-medium text-foreground">Failed to load sync history</p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {error?.data?.message ||
-                error?.error ||
-                'Something went wrong while loading sync logs. Please try again.'}
-            </p>
-            <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+        {showError ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-8 text-center text-sm text-destructive">
+            <p>{error?.data?.message || error?.error || 'Failed to load sync history'}</p>
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
               Retry
             </Button>
           </div>
+        ) : showLoading ? (
+          <TableSkeleton rows={8} cols={8} />
         ) : (
-          <>
+          <div className={cn(isFetching && 'opacity-70 transition-opacity')}>
             <DataTable
               columns={columns}
               data={logs}
-              isLoading={false}
-              isFiltering={isFetching}
-              filteringMessage="Refreshing sync history…"
               sorting={sorting}
               onSortingChange={setSorting}
-              emptyMessage="No sync history yet."
-              skeletonCols={8}
-              maxHeight="calc(100vh - 260px)"
+              pageCount={pagination?.pages || 1}
+              pageIndex={page - 1}
+              onPageChange={(p) => setPage(p + 1)}
+              emptyMessage="No sync history yet"
             />
-
-            {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  type="button"
-                  className={cn('rounded-md border px-3 py-1 text-sm disabled:opacity-50')}
-                  disabled={page <= 1 || isFetching}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-muted-foreground">
-                  Page {page} of {pagination.totalPages}
-                </span>
-                <button
-                  type="button"
-                  className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
-                  disabled={page >= pagination.totalPages || isFetching}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
     </div>

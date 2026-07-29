@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { CheckCircle2, Loader2, X, RefreshCw, AlertTriangle } from 'lucide-react';
-import { useGetSyncProgressQuery, apiSlice } from '@/store/api/apiSlice';
+import { CheckCircle2, Loader2, X, RefreshCw, AlertTriangle, Pause, Ban } from 'lucide-react';
+import {
+  useGetSyncProgressQuery,
+  usePauseSyncLogMutation,
+  useCancelSyncLogMutation,
+  useCancelActiveSyncsMutation,
+  apiSlice,
+} from '@/store/api/apiSlice';
 import {
   setSyncProgressSnapshot,
   dismissSyncNotice,
@@ -12,13 +18,15 @@ import { useHasAnyPermission } from '@/hooks/usePermission';
 import { cn } from '@/lib/utils';
 
 function phaseLabel(phase, status) {
+  if (status === 'paused') return 'Paused';
+  if (status === 'cancelled') return 'Cancelled';
   if (status === 'pending' || phase === 'queued') return 'Queued';
   if (phase === 'fetching') return 'Downloading sheet…';
   if (phase === 'classifying') return 'Checking rows…';
   if (phase === 'importing') return 'Importing leads…';
   if (phase === 'finalizing') return 'Finalizing…';
   if (status === 'completed') return 'Completed';
-  if (status === 'failed' || status === 'cancelled') return 'Failed';
+  if (status === 'failed') return 'Failed';
   return 'Working…';
 }
 
@@ -56,7 +64,7 @@ function estimateRemainingMs(item) {
   return (total - done) / rate;
 }
 
-function ProgressRow({ item, now }) {
+function ProgressRow({ item, now, onPause, onCancel, busyId }) {
   const total = Number(item.totalToProcess) || 0;
   const done = Number(item.processedCount) || 0;
   const rowsFound = Number(item.rowsFound) || 0;
@@ -71,6 +79,8 @@ function ProgressRow({ item, now }) {
   const elapsed = startedMs ? now - startedMs : 0;
   const eta = formatEta(estimateRemainingMs(item));
   const stalled = startedMs && elapsed > 90_000 && done === 0 && !hasCounts;
+  const id = String(item.syncLogId);
+  const busy = busyId === id;
 
   const countLabel = hasCounts
     ? `${done.toLocaleString()} / ${total.toLocaleString()}`
@@ -124,9 +134,33 @@ function ProgressRow({ item, now }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        {detailParts.join(' · ')}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-muted-foreground">
+          {detailParts.join(' · ')}
+        </p>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onPause(id)}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            title="Pause sync"
+          >
+            <Pause className="h-3 w-3" />
+            Pause
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onCancel(id)}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            title="Cancel sync"
+          >
+            <Ban className="h-3 w-3" />
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -137,6 +171,7 @@ function ProgressRow({ item, now }) {
 export default function SyncProgressDock() {
   const dispatch = useDispatch();
   const canView = useHasAnyPermission('google_sheets.sync', 'google_sheets.sync_all', 'google_sheets.view');
+  const canControl = useHasAnyPermission('google_sheets.sync', 'google_sheets.sync_all');
   const { trackedIds, noticeDismissed, seenCompletedIds, active: storedActive } = useSelector(
     (s) => s.syncProgress
   );
@@ -144,13 +179,16 @@ export default function SyncProgressDock() {
   const emptyPollsRef = useRef(0);
   const [now, setNow] = useState(Date.now());
   const [pollError, setPollError] = useState('');
+  const [busyId, setBusyId] = useState('');
 
-  // Only poll while a sync was started in this session, or one is still active.
-  // Do not poll just because the user has Google Sheets permission / auto-sync settings.
+  const [pauseSync] = usePauseSyncLogMutation();
+  const [cancelSync] = useCancelSyncLogMutation();
+  const [cancelActive] = useCancelActiveSyncsMutation();
+
   const shouldPoll =
     canView && (trackedIds.length > 0 || (storedActive && storedActive.length > 0));
 
-  const { data, isFetching, isError, error } = useGetSyncProgressQuery(undefined, {
+  const { data, isFetching, isError, error, refetch } = useGetSyncProgressQuery(undefined, {
     skip: !shouldPoll,
     pollingInterval: shouldPoll ? 2500 : 0,
     refetchOnMountOrArgChange: shouldPoll,
@@ -174,7 +212,6 @@ export default function SyncProgressDock() {
     const recent = data.data.recent || [];
     if (active.length === 0 && recent.length === 0 && trackedIds.length > 0) {
       emptyPollsRef.current += 1;
-      // ~3 empty polls (~7.5s) → stale session IDs, stop polling quietly
       if (emptyPollsRef.current >= 3) {
         dispatch(clearAllTracked());
         emptyPollsRef.current = 0;
@@ -187,12 +224,10 @@ export default function SyncProgressDock() {
   useEffect(() => {
     if (!isError) return;
     const status = error?.status;
-    // Server restarts / token refresh blips — don't surface as a sync failure.
     if (status === 401 || status === 403 || status === 'FETCH_ERROR') {
       setPollError('');
       return;
     }
-    // No user-started sync to watch — stay quiet.
     if (!trackedIds.length && !(storedActive && storedActive.length)) {
       setPollError('');
       return;
@@ -202,7 +237,6 @@ export default function SyncProgressDock() {
   }, [isError, error, trackedIds.length, storedActive]);
 
   const rawActive = data?.data?.active || storedActive || [];
-  // Only show syncs started in this browser session — hide abandoned queue ghosts.
   const activeItems = rawActive.filter((item) => {
     if (trackedIds.length > 0 && !trackedIds.includes(String(item.syncLogId))) return false;
     const startedMs = item.startedAt ? new Date(item.startedAt).getTime() : 0;
@@ -218,7 +252,7 @@ export default function SyncProgressDock() {
   const hasActive = activeItems.length > 0;
 
   const isAbandonedQueueFailure = (r) => {
-    if (r.status !== 'failed' && r.status !== 'cancelled') return false;
+    if (r.status !== 'failed' && r.status !== 'cancelled' && r.status !== 'paused') return false;
     if ((r.processedCount || 0) > 0 || r.importedCount || r.updatedCount) return false;
     return /never started|queue abandoned|timed out or stalled|waiting for worker/i.test(
       r.errorSummary || ''
@@ -228,12 +262,10 @@ export default function SyncProgressDock() {
   const finishedTracked = recentItems.filter((r) => {
     const id = String(r.syncLogId);
     if (!trackedIds.includes(id) || seenCompletedIds.includes(id)) return false;
-    // Silently drop GC'd pre-fix queue failures — don't clutter the dock.
     if (isAbandonedQueueFailure(r)) return false;
     return true;
   });
 
-  // Prune abandoned failures from session tracking without showing a toast.
   useEffect(() => {
     recentItems.forEach((item) => {
       const id = String(item.syncLogId);
@@ -254,6 +286,47 @@ export default function SyncProgressDock() {
       );
     });
   }, [finishedTracked, dispatch]);
+
+  const handlePause = async (id) => {
+    if (!canControl) return;
+    setBusyId(id);
+    try {
+      await pauseSync(id).unwrap();
+      refetch();
+    } catch (err) {
+      setPollError(err?.data?.message || err?.message || 'Could not pause sync');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const handleCancel = async (id) => {
+    if (!canControl) return;
+    setBusyId(id);
+    try {
+      await cancelSync(id).unwrap();
+      dispatch(markCompletedSeen(id));
+      refetch();
+    } catch (err) {
+      setPollError(err?.data?.message || err?.message || 'Could not cancel sync');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const handleCancelAll = async () => {
+    if (!canControl) return;
+    setBusyId('all');
+    try {
+      await cancelActive().unwrap();
+      dispatch(clearAllTracked());
+      refetch();
+    } catch (err) {
+      setPollError(err?.data?.message || err?.message || 'Could not cancel syncs');
+    } finally {
+      setBusyId('');
+    }
+  };
 
   if (!canView) return null;
   if (!hasActive && finishedTracked.length === 0 && !pollError) return null;
@@ -289,7 +362,7 @@ export default function SyncProgressDock() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">Syncing in the background</p>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                You can keep working — sync continues even if you leave this page.
+                You can pause or cancel anytime, then start a fresh sync.
               </p>
             </div>
             <button
@@ -311,15 +384,32 @@ export default function SyncProgressDock() {
             <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
               {hasActive ? 'Live sheet sync' : 'Sync finished'}
             </span>
+            {hasActive && canControl && (
+              <button
+                type="button"
+                disabled={busyId === 'all'}
+                onClick={handleCancelAll}
+                className="ml-auto text-[11px] font-medium text-destructive hover:underline disabled:opacity-50"
+              >
+                Cancel all
+              </button>
+            )}
           </div>
           <div className="space-y-3 p-3">
             {activeItems.map((item) => (
-              <ProgressRow key={item.syncLogId} item={item} now={now} />
+              <ProgressRow
+                key={item.syncLogId}
+                item={item}
+                now={now}
+                busyId={busyId}
+                onPause={handlePause}
+                onCancel={handleCancel}
+              />
             ))}
             {!hasActive &&
               finishedTracked.map((item) => (
                 <div key={item.syncLogId} className="flex items-start gap-2 text-sm">
-                  {item.status === 'failed' || item.status === 'cancelled' ? (
+                  {item.status === 'failed' || item.status === 'cancelled' || item.status === 'paused' ? (
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                   ) : (
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
@@ -327,11 +417,13 @@ export default function SyncProgressDock() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{item.connectorName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {item.status === 'failed' || item.status === 'cancelled'
-                        ? item.errorSummary || 'Sync failed'
-                        : `Done · ${(item.importedCount || 0).toLocaleString()} imported${
-                          item.updatedCount ? `, ${item.updatedCount.toLocaleString()} updated` : ''
-                        }${item.rowsFound ? ` · ${item.rowsFound.toLocaleString()} rows scanned` : ''}`}
+                      {item.status === 'paused'
+                        ? item.errorSummary || 'Sync paused'
+                        : item.status === 'failed' || item.status === 'cancelled'
+                          ? item.errorSummary || 'Sync failed'
+                          : `Done · ${(item.importedCount || 0).toLocaleString()} imported${
+                            item.updatedCount ? `, ${item.updatedCount.toLocaleString()} updated` : ''
+                          }${item.rowsFound ? ` · ${item.rowsFound.toLocaleString()} rows scanned` : ''}`}
                     </p>
                   </div>
                   <button

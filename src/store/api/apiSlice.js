@@ -178,6 +178,27 @@ export const apiSlice = createApi({
       query: () => ({ url: '/connectors/sync-progress' }),
       providesTags: ['ConnectorSyncLog'],
     }),
+    pauseSyncLog: builder.mutation({
+      query: (syncLogId) => ({
+        url: `/connectors/sync-logs/${syncLogId}/pause`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['ConnectorSyncLog', 'Connector'],
+    }),
+    cancelSyncLog: builder.mutation({
+      query: (syncLogId) => ({
+        url: `/connectors/sync-logs/${syncLogId}/cancel`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['ConnectorSyncLog', 'Connector'],
+    }),
+    cancelActiveSyncs: builder.mutation({
+      query: () => ({
+        url: '/connectors/sync-logs/cancel-active',
+        method: 'POST',
+      }),
+      invalidatesTags: ['ConnectorSyncLog', 'Connector'],
+    }),
     getMappingTemplates: builder.query({
       query: () => ({ url: '/connectors/templates', params: { type: 'google_sheets' } }),
       providesTags: ['MappingTemplate'],
@@ -268,6 +289,9 @@ export const {
   useGetConnectorHealthQuery,
   useGetConnectorSyncLogsQuery,
   useGetSyncProgressQuery,
+  usePauseSyncLogMutation,
+  useCancelSyncLogMutation,
+  useCancelActiveSyncsMutation,
   useGetMappingTemplatesQuery,
   useGetGoogleSheetsSetupQuery,
   useCreateConnectorMutation,
