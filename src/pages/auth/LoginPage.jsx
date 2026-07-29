@@ -254,7 +254,7 @@ export default function LoginPage() {
   const stepCopy = STEP_COPY[step];
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white px-4 py-10 sm:px-6">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white px-4 py-6 sm:px-6">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -269,29 +269,33 @@ export default function LoginPage() {
           mounted ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
         )}
       >
-        <div className="mb-8 flex flex-col items-center text-center">
+        <div className="mb-4 flex justify-center">
           <img
             src="/logo.jpg"
             alt="Corizo"
-            className="mb-5 h-12 w-auto max-w-[200px] object-contain"
+            className="h-10 w-auto max-w-[180px] object-contain"
           />
-          {/* <p className="text-[13px] font-semibold tracking-wide text-primary">Corizo Desk</p> */}
-          <h1 className="mt-3 text-[28px] font-semibold tracking-tight text-foreground">
-            {stepCopy.title}
-          </h1>
-          <p className="mt-2 max-w-[320px] text-[15px] leading-relaxed text-muted-foreground">
-            {step === 'otp' ? (
-              <>
-                We sent a code to <span className="font-medium text-foreground">{email}</span>
-                {mfaPreference === 'both' && '. Then you will verify with your authenticator.'}
-              </>
-            ) : (
-              stepCopy.subtitle
-            )}
-          </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-white p-7 shadow-elevated sm:p-8">
+        <div className="rounded-2xl border border-border bg-white p-6 shadow-elevated sm:p-7">
+          <div className="mb-5 text-center">
+            <h1 className="text-[22px] font-semibold tracking-tight text-foreground sm:text-[24px]">
+              {stepCopy.title}
+            </h1>
+            {(step === 'otp' || stepCopy.subtitle) && (
+              <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
+                {step === 'otp' ? (
+                  <>
+                    We sent a code to <span className="font-medium text-foreground">{email}</span>
+                    {mfaPreference === 'both' && '. Then you will verify with your authenticator.'}
+                  </>
+                ) : (
+                  stepCopy.subtitle
+                )}
+              </p>
+            )}
+          </div>
+
           {error && (
             <div
               role="alert"
@@ -303,7 +307,7 @@ export default function LoginPage() {
           )}
 
           {step === 'credentials' && (
-            <form onSubmit={credentialsForm.handleSubmit(submitCredentials)} className="space-y-5">
+            <form onSubmit={credentialsForm.handleSubmit(submitCredentials)} className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="email" className="block text-[13px] font-medium text-foreground">
                   Email or username
@@ -518,7 +522,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-5 text-center">
           <p className="text-[12px] text-muted-foreground">
             © {new Date().getFullYear()} Corizo Desk · v1.0
           </p>
