@@ -2,7 +2,6 @@ import { Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Sidebar from './Sidebar';
 import SyncProgressDock from '@/components/google-sheets/SyncProgressDock';
-import WelcomeGuideModal from '@/components/onboarding/WelcomeGuideModal';
 import { cn } from '@/lib/utils';
 
 export default function AppLayout() {
@@ -20,7 +19,6 @@ export default function AppLayout() {
         <Outlet />
       </main>
       <SyncProgressDock />
-      <WelcomeGuideModal />
     </div>
   );
 }
