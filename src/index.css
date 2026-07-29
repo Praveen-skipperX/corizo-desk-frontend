@@ -1,0 +1,222 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Corizo Desk Design System
+  Brand: https://corizo.in
+  Primary: #6E25A4 → #8E3FD3
+*/
+
+@layer base {
+  :root {
+    /* Surfaces */
+    --background: 240 33% 99%;          /* #FAFAFC */
+    --foreground: 220 39% 11%;          /* #111827 */
+    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card-foreground: 220 39% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 39% 11%;
+
+    /* Brand purple */
+    --primary: 274 63% 39%;             /* #6E25A4 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 274 63% 45%;
+    --brand-mid: 274 63% 54%;           /* #8E3FD3 */
+
+    /* Ink — keeps text-secondary usable as primary text */
+    --secondary: 220 39% 11%;           /* #111827 */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 20% 97%;               /* #F5F5FA */
+    --muted-foreground: 220 9% 46%;     /* #6B7280 */
+
+    /* Soft purple tint for hover chips */
+    --accent: 274 60% 96%;
+    --accent-foreground: 274 63% 35%;
+
+    /* Warm accent — sparingly (badges/alerts) */
+    --warm: 12 90% 58%;
+    --warm-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;              /* #E5E7EB */
+    --input: 220 13% 91%;
+    --ring: 274 63% 39%;
+
+    --radius: 0.75rem;
+
+    /* White sidebar */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 220 39% 11%;
+    --header: 0 0% 100%;
+
+    --shadow-card: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
+    --shadow-elevated: 0 1px 2px rgba(17, 24, 39, 0.04), 0 12px 32px rgba(17, 24, 39, 0.08);
+  }
+
+  .dark {
+    --background: 240 15% 8%;
+    --foreground: 0 0% 98%;
+    --card: 240 12% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 12% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 274 63% 54%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 274 63% 60%;
+    --brand-mid: 274 63% 62%;
+    --secondary: 240 10% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 10% 16%;
+    --muted-foreground: 220 10% 65%;
+    --accent: 274 30% 18%;
+    --accent-foreground: 274 80% 80%;
+    --warm: 12 90% 58%;
+    --warm-foreground: 0 0% 100%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 10% 20%;
+    --input: 240 10% 20%;
+    --ring: 274 63% 54%;
+    --sidebar: 240 12% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --header: 240 12% 10%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, h4 {
+    @apply text-foreground font-semibold tracking-tight;
+    letter-spacing: -0.025em;
+  }
+
+  ::selection {
+    background: hsl(274 63% 39% / 0.15);
+  }
+}
+
+@layer components {
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, #6E25A4 0%, #8E3FD3 100%);
+  }
+
+  .text-brand-gradient {
+    background-image: linear-gradient(135deg, #6E25A4 0%, #8E3FD3 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .focus-brand {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+}
+
+/* react-datepicker — Corizo brand */
+.corizo-datetime-picker .react-datepicker-wrapper {
+  width: 100%;
+}
+
+.corizo-datepicker-popper {
+  z-index: 200 !important;
+  pointer-events: auto !important;
+}
+
+#datepicker-portal,
+[data-datepicker-portal] {
+  position: relative;
+  z-index: 200;
+  pointer-events: auto !important;
+}
+
+#datepicker-portal .react-datepicker-popper,
+#datepicker-portal .react-datepicker,
+[data-datepicker-portal] .react-datepicker-popper,
+[data-datepicker-portal] .react-datepicker {
+  pointer-events: auto !important;
+}
+
+.corizo-datepicker-calendar.react-datepicker {
+  font-family: inherit;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-elevated);
+  overflow: hidden;
+}
+
+.corizo-datepicker-calendar .react-datepicker__header {
+  background: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
+  padding-top: 0.75rem;
+}
+
+.corizo-datepicker-calendar .react-datepicker__current-month,
+.corizo-datepicker-calendar .react-datepicker-time__header {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.corizo-datepicker-calendar .react-datepicker__day-name {
+  color: hsl(var(--muted-foreground));
+}
+
+.corizo-datepicker-calendar .react-datepicker__day--selected,
+.corizo-datepicker-calendar .react-datepicker__day--keyboard-selected,
+.corizo-datepicker-calendar .react-datepicker__time-list-item--selected {
+  background: #6e25a4 !important;
+  color: #fff !important;
+}
+
+.corizo-datepicker-calendar .react-datepicker__day:hover,
+.corizo-datepicker-calendar .react-datepicker__time-list-item:hover {
+  background: hsl(274 60% 96%) !important;
+  color: #6e25a4 !important;
+}
+
+.corizo-datepicker-calendar .react-datepicker__day--today {
+  font-weight: 700;
+  color: #6e25a4;
+}
+
+.corizo-datepicker-calendar .react-datepicker__navigation-icon::before {
+  border-color: hsl(var(--muted-foreground));
+}
+
+.corizo-datepicker-calendar .react-datepicker__time-container {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.corizo-datepicker-calendar .react-datepicker__triangle {
+  display: none;
+}
