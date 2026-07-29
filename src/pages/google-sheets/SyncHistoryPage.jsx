@@ -19,7 +19,11 @@ export default function SyncHistoryPage() {
 
   const { data, isLoading, isFetching, isError, error, refetch } = useGetConnectorSyncLogsQuery(
     { page, limit: 30 },
-    { refetchOnMountOrArgChange: true }
+    {
+      refetchOnMountOrArgChange: true,
+      // Refresh while jobs may still be running so Cancel / status stay current
+      pollingInterval: 5000,
+    }
   );
   const [cancelSync] = useCancelSyncLogMutation();
   const [cancelActive, { isLoading: cancellingAll }] = useCancelActiveSyncsMutation();
@@ -123,37 +127,36 @@ export default function SyncHistoryPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        size: 110,
+        size: 200,
         cell: ({ row }) => {
-          const status = row.original.status;
+          const log = row.original;
+          const status = log.status;
           const variant =
             status === 'completed'
               ? 'success'
               : status === 'failed' || status === 'cancelled'
                 ? 'destructive'
                 : 'default';
-          return <Badge variant={variant}>{status}</Badge>;
-        },
-      },
-      {
-        id: 'actions',
-        header: '',
-        size: 100,
-        enableSorting: false,
-        cell: ({ row }) => {
-          const log = row.original;
-          if (log.status !== 'pending' && log.status !== 'running') return null;
+          const canCancel = status === 'pending' || status === 'running';
           return (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs text-destructive"
-              disabled={busyId === String(log._id)}
-              onClick={() => handleCancel(log._id)}
-            >
-              Cancel
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={variant}>{status}</Badge>
+              {canCancel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 border-destructive/40 px-2 text-xs text-destructive hover:bg-destructive/10"
+                  disabled={busyId === String(log._id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCancel(log._id);
+                  }}
+                >
+                  {busyId === String(log._id) ? 'Cancelling…' : 'Cancel'}
+                </Button>
+              )}
+            </div>
           );
         },
       },
