@@ -12,12 +12,23 @@ import {
   ArrowRight,
   XCircle,
   CalendarClock,
+  TrendingUp,
+  FolderOpen,
+  Sparkles,
+  CalendarDays,
 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { StatCardSkeleton, TableSkeleton } from '@/components/ui/skeleton';
 import LoadingState from '@/components/ui/loading-state';
-import { StatusChart, DepartmentChart, EmployeePerformanceChart } from '@/components/dashboard/Charts';
+import {
+  StatusChart,
+  DepartmentChart,
+  SourceChart,
+  CourseEnrollmentsChart,
+  CourseInterestChart,
+  LeadsTrendChart,
+} from '@/components/dashboard/Charts';
 import FollowUpDashboardTables from '@/components/dashboard/FollowUpDashboardTables';
 import LeadFormModal from '@/components/leads/LeadFormModal';
 import { useGetDashboardQuery } from '@/store/api/apiSlice';
@@ -34,6 +45,7 @@ export default function DashboardPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const dashboard = data?.data;
   const summary = dashboard?.summary || {};
+  const charts = dashboard?.charts || {};
 
   if (isLoading) {
     return (
@@ -41,8 +53,8 @@ export default function DashboardPage() {
         <Header title="Dashboard" description="Loading dashboard data..." />
         <div className="space-y-5 bg-muted/50 p-4 sm:p-6">
           <LoadingState message="Loading dashboard data..." className="py-4" />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => <StatCardSkeleton key={i} />)}
           </div>
           <TableSkeleton rows={4} cols={5} />
         </div>
@@ -63,7 +75,7 @@ export default function DashboardPage() {
     [ROLES.SUPER_ADMIN]: 'Organization-wide lead and enrollment metrics',
     [ROLES.ADMIN]: ENABLE_DEPARTMENTS
       ? `Department analytics for ${user?.department?.name || 'your team'}`
-      : 'Team analytics and counselor performance',
+      : 'Team lead and enrollment analytics',
     [ROLES.EMPLOYEE]: 'Your personal lead and follow-up metrics',
   };
 
@@ -72,13 +84,30 @@ export default function DashboardPage() {
       <Header title="Dashboard" description={roleDescriptions[user?.role]} />
 
       <div className="flex-1 space-y-5 bg-muted/50 p-4 sm:p-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Total Leads"
             value={summary.totalLeads?.toLocaleString() || '0'}
             icon={FileText}
             variant="default"
-            tooltip="All leads visible in your scope."
+            subtitle={`${summary.weekLeads || 0} this week (by sheet date)`}
+            tooltip="All leads in your scope, including sheet imports."
+          />
+          <StatCard
+            title="Leads Today"
+            value={summary.todaysLeads?.toLocaleString() || '0'}
+            icon={CalendarDays}
+            variant="open"
+            subtitle="By sheet / enquiry date"
+            tooltip="Leads whose sheet date (or created date if missing) is today."
+          />
+          <StatCard
+            title="Open Pipeline"
+            value={summary.openLeads?.toLocaleString() || '0'}
+            icon={FolderOpen}
+            variant="open"
+            subtitle="Active / in-progress leads"
+            tooltip="Leads that are not enrolled, not interested, duplicate, or spam."
           />
           <StatCard
             title="Follow-ups Today"
@@ -101,8 +130,16 @@ export default function DashboardPage() {
             value={summary.closedWon?.toLocaleString() || '0'}
             icon={CheckCircle2}
             variant="closed"
-            subtitle="Course enrollments"
-            tooltip="Leads marked as enrolled."
+            subtitle={`${summary.weekEnrollments || 0} this week (sheet date)`}
+            tooltip="Enrolled leads. Weekly count uses sheet / enquiry date."
+          />
+          <StatCard
+            title="Conversion Rate"
+            value={`${summary.conversionRate ?? 0}%`}
+            icon={TrendingUp}
+            variant="closed"
+            subtitle="Enrolled ÷ total leads"
+            tooltip="Share of leads that converted to enrollments."
           />
           <StatCard
             title="Not Interested"
@@ -137,25 +174,43 @@ export default function DashboardPage() {
           }}
         />
 
-        <div className={cn('grid gap-5', ENABLE_DEPARTMENTS && user?.role !== ROLES.EMPLOYEE ? 'lg:grid-cols-2' : '')}>
+        <LeadsTrendChart
+          data={charts.leadsTrend || []}
+          tooltip="New leads and enrollments by sheet / enquiry date for the last 14 days."
+        />
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <CourseEnrollmentsChart
+            data={charts.courseEnrollments || []}
+            tooltip="Enrolled leads by course (name and sheet URL values are combined)."
+          />
+          <CourseInterestChart
+            data={charts.courseDistribution || []}
+            tooltip="All leads with a course set (name and sheet URL values are combined)."
+          />
+        </div>
+
+        <div
+          className={cn(
+            'grid gap-5',
+            ENABLE_DEPARTMENTS && user?.role !== ROLES.EMPLOYEE ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
+          )}
+        >
           <StatusChart
-            data={dashboard?.charts?.statusDistribution || []}
+            data={charts.statusDistribution || []}
             tooltip="Breakdown of leads by current status."
+          />
+          <SourceChart
+            data={charts.sourceDistribution || []}
+            tooltip="Where leads are coming from (including sheet imports)."
           />
           {ENABLE_DEPARTMENTS && user?.role !== ROLES.EMPLOYEE && (
             <DepartmentChart
-              data={dashboard?.charts?.departmentDistribution || []}
+              data={charts.departmentDistribution || []}
               tooltip="Lead distribution by department."
             />
           )}
         </div>
-
-        {user?.role !== ROLES.EMPLOYEE && (
-          <EmployeePerformanceChart
-            data={dashboard?.charts?.employeePerformance || []}
-            tooltip="Top performing counselors by lead volume."
-          />
-        )}
 
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center gap-2 border-b py-3.5">
@@ -165,7 +220,10 @@ export default function DashboardPage() {
             <CardTitle className="flex-1 font-sans text-[15px] font-semibold tracking-tight text-secondary">
               Recent Activity
             </CardTitle>
-            <Link to="/audit-logs" className="inline-flex items-center gap-1 font-sans text-[13px] font-medium text-primary hover:underline">
+            <Link
+              to="/audit-logs"
+              className="inline-flex items-center gap-1 font-sans text-[13px] font-medium text-primary hover:underline"
+            >
               View all <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </CardHeader>
@@ -173,9 +231,12 @@ export default function DashboardPage() {
             <ul className="divide-y divide-border/70">
               {dashboard?.recentActivities?.length > 0 ? (
                 dashboard.recentActivities.map((activity) => (
-                  <li key={activity._id} className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/25">
+                  <li
+                    key={activity._id}
+                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/25"
+                  >
                     <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Activity className="h-3.5 w-3.5" />
+                      <Sparkles className="h-3.5 w-3.5" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="font-sans text-[14px] text-foreground">

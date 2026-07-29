@@ -1,11 +1,11 @@
-import LoadingButton from '@/components/ui/loading-button';
 import { Input } from '@/components/ui/input';
-import PasswordInput from '@/components/ui/password-input';
+import LoadingButton from '@/components/ui/loading-button';
 import OtpInput from '@/components/ui/OtpInput';
+import PasswordInput from '@/components/ui/password-input';
 import { formatCountdown, useCountdown } from '@/hooks/useCountdown';
 import api from '@/lib/api';
-import { setUser } from '@/store/authSlice';
 import { cn } from '@/lib/utils';
+import { setUser } from '@/store/authSlice';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, ArrowLeft, Clock, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -275,7 +275,7 @@ export default function LoginPage() {
             alt="Corizo"
             className="mb-5 h-12 w-auto max-w-[200px] object-contain"
           />
-          <p className="text-[13px] font-semibold tracking-wide text-primary">Corizo Desk</p>
+          {/* <p className="text-[13px] font-semibold tracking-wide text-primary">Corizo Desk</p> */}
           <h1 className="mt-3 text-[28px] font-semibold tracking-tight text-foreground">
             {stepCopy.title}
           </h1>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BookOpen, Pencil, Plus, Power, PowerOff, Trash2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -103,7 +104,7 @@ export default function CoursesPage() {
 
       <div className="space-y-6 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <InfoTooltip content="Courses appear in the lead form dropdown. Renaming a course updates matching leads." />
+          <InfoTooltip content="Lead counts include name and URL/slug matches. Click a count to open those leads." />
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" /> Add Course
           </Button>
@@ -132,57 +133,72 @@ export default function CoursesPage() {
                     </td>
                   </tr>
                 ) : (
-                  courses.map((course) => (
-                    <tr key={course._id} className="border-b hover:bg-muted/30">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 shrink-0 text-primary" />
-                          <div>
-                            <p className="font-medium">{course.name}</p>
-                            <p className="text-[11px] text-muted-foreground">{course.code}</p>
+                  courses.map((course) => {
+                    const leadCount = course.totalLeads ?? 0;
+                    return (
+                      <tr key={course._id} className="border-b hover:bg-muted/30">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+                            <div>
+                              <p className="font-medium">{course.name}</p>
+                              <p className="text-[11px] text-muted-foreground">{course.code}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{course.category || '—'}</td>
-                      <td className="px-4 py-3 text-sm">{course.totalLeads ?? 0}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs ${
-                            course.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {course.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {formatDateTime(course.updatedAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(course)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => toggleActive(course)}
-                            title={course.isActive ? 'Deactivate' : 'Reactivate'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{course.category || '—'}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {leadCount > 0 ? (
+                            <Link
+                              to={`/leads?course=${encodeURIComponent(course.name)}`}
+                              className="font-semibold text-primary tabular-nums hover:underline"
+                              title={`View ${leadCount} lead${leadCount === 1 ? '' : 's'} for ${course.name}`}
+                            >
+                              {leadCount}
+                            </Link>
+                          ) : (
+                            <span className="tabular-nums text-muted-foreground">0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs ${
+                              course.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                            }`}
                           >
-                            {course.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleDelete(course)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {course.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {formatDateTime(course.updatedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(course)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => toggleActive(course)}
+                              title={course.isActive ? 'Deactivate' : 'Reactivate'}
+                            >
+                              {course.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => handleDelete(course)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

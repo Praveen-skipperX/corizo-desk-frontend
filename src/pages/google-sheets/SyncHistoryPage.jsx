@@ -4,6 +4,7 @@ import GoogleSheetsTabs from '@/components/google-sheets/GoogleSheetsTabs';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { useGetConnectorSyncLogsQuery } from '@/store/api/apiSlice';
 import { cn, formatDateTime, formatDuration } from '@/lib/utils';
 
@@ -11,13 +12,15 @@ export default function SyncHistoryPage() {
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState([{ id: 'createdAt', desc: true }]);
 
-  const { data, isLoading, isError, error, refetch } = useGetConnectorSyncLogsQuery({
-    page,
-    limit: 30,
-  });
+  const { data, isLoading, isFetching, isError, error, refetch } = useGetConnectorSyncLogsQuery(
+    { page, limit: 30 },
+    { refetchOnMountOrArgChange: true }
+  );
 
   const logs = data?.data || [];
   const pagination = data?.pagination;
+  const showLoading = isLoading || (isFetching && !data);
+  const showError = isError && !data;
 
   const columns = useMemo(
     () => [
@@ -110,48 +113,68 @@ export default function SyncHistoryPage() {
       <div className="flex-1 space-y-4 p-4 sm:p-6">
         <GoogleSheetsTabs />
 
-        {isError && (
+        {isError && data && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <span>{error?.data?.message || error?.message || 'Failed to load sync history'}</span>
+            <span>{error?.data?.message || error?.error || 'Failed to refresh sync history'}</span>
             <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
               Retry
             </Button>
           </div>
         )}
 
-        <DataTable
-          columns={columns}
-          data={logs}
-          isLoading={isLoading}
-          sorting={sorting}
-          onSortingChange={setSorting}
-          emptyMessage="No sync history yet."
-          skeletonCols={8}
-          maxHeight="calc(100vh - 260px)"
-        />
-
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <button
-              type="button"
-              className={cn('rounded-md border px-3 py-1 text-sm disabled:opacity-50')}
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </button>
-            <span className="text-sm text-muted-foreground">
-              Page {page} of {pagination.totalPages}
-            </span>
-            <button
-              type="button"
-              className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
-              disabled={page >= pagination.totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </button>
+        {showLoading ? (
+          <TableSkeleton rows={10} cols={8} />
+        ) : showError ? (
+          <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-white px-6 py-12 text-center shadow-card">
+            <p className="text-sm font-medium text-foreground">Failed to load sync history</p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              {error?.data?.message ||
+                error?.error ||
+                'Something went wrong while loading sync logs. Please try again.'}
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
           </div>
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              data={logs}
+              isLoading={false}
+              isFiltering={isFetching}
+              filteringMessage="Refreshing sync history…"
+              sorting={sorting}
+              onSortingChange={setSorting}
+              emptyMessage="No sync history yet."
+              skeletonCols={8}
+              maxHeight="calc(100vh - 260px)"
+            />
+
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  className={cn('rounded-md border px-3 py-1 text-sm disabled:opacity-50')}
+                  disabled={page <= 1 || isFetching}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {pagination.totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+                  disabled={page >= pagination.totalPages || isFetching}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -143,13 +143,37 @@ export default function LeadsPage() {
   };
 
   useEffect(() => {
-    if (searchParams.get('create') === '1') {
+    const courseFromUrl = searchParams.get('course');
+    const createFromUrl = searchParams.get('create');
+
+    if (courseFromUrl) {
+      setDraft((prev) => ({ ...prev, course: courseFromUrl }));
+      setApplied((prev) => ({ ...prev, course: courseFromUrl }));
+      setShowFilters(true);
+      setPage(1);
+      setRowSelection({});
+    }
+
+    if (createFromUrl === '1') {
       setEditLead(null);
       setModalOpen(true);
-      setSearchParams({}, { replace: true });
+      const next = new URLSearchParams(searchParams);
+      next.delete('create');
+      setSearchParams(next, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
+  const clearFilters = () => {
+    setDraft(EMPTY_FILTERS);
+    setApplied(EMPTY_FILTERS);
+    setPage(1);
+    setRowSelection({});
+    if (searchParams.has('course')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('course');
+      setSearchParams(next, { replace: true });
+    }
+  };
   const { data, isLoading, isFetching, refetch } = useGetLeadsQuery({
     page,
     limit: pageSize,
@@ -198,13 +222,6 @@ export default function LeadsPage() {
     ) {
       setShowFilters(true);
     }
-    setPage(1);
-    setRowSelection({});
-  };
-
-  const clearFilters = () => {
-    setDraft(EMPTY_FILTERS);
-    setApplied(EMPTY_FILTERS);
     setPage(1);
     setRowSelection({});
   };

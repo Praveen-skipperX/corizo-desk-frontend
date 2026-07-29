@@ -11,13 +11,10 @@ export function Skeleton({ className, ...props }) {
 
 export function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-8 w-8 rounded-lg" />
-      </div>
-      <Skeleton className="mt-3 h-8 w-20" />
-      <Skeleton className="mt-2 h-3 w-32" />
+    <div className="rounded-2xl border border-border bg-white p-5 shadow-card">
+      <Skeleton className="h-3.5 w-28" />
+      <Skeleton className="mt-3 h-8 w-16" />
+      <Skeleton className="mt-2 h-3 w-20" />
     </div>
   );
 }
