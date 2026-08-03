@@ -30,6 +30,54 @@ export function PairedDetailRows({ rows, className }) {
   );
 }
 
+function PropertyField({ label, value, children }) {
+  return (
+    <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] border-b border-border sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:border-b-0">
+      <div className="flex items-center border-r border-border bg-muted/50 px-2.5 py-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground leading-none">
+          {label}
+        </span>
+      </div>
+      <div className="flex min-w-0 items-center px-2.5 py-1 text-[13px] leading-snug font-medium text-foreground">
+        <div className="min-w-0 break-words">{children ?? value ?? '—'}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * CRM / ERP style property table: Label | Value | Label | Value
+ * Fixed label column width, bordered cells, consistent row height.
+ *
+ * rows: [{ left: { label, value?, children? }, right?: { label, value?, children? } }]
+ */
+export function PropertyTable({ rows = [], className }) {
+  return (
+    <div className={cn('overflow-hidden rounded-lg border border-border', className)}>
+      {rows.map((row, i) => (
+        <div
+          key={i}
+          className={cn(
+            'grid grid-cols-1 sm:grid-cols-2',
+            i < rows.length - 1 && 'sm:border-b sm:border-border',
+          )}
+        >
+          {row.left && (
+            <div className={cn('sm:border-r sm:border-border', !row.right && 'sm:col-span-2')}>
+              <PropertyField {...row.left} />
+            </div>
+          )}
+          {row.right && (
+            <div>
+              <PropertyField {...row.right} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Left / right column split inside a card */
 export function SplitDetailPanel({ left, right, className }) {
   return (

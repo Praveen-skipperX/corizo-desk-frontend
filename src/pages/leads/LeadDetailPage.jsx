@@ -11,7 +11,7 @@ import FoldableCard from '@/components/ui/foldable-card';
 import { StatusBadge } from '@/components/ui/badge';
 import { PriorityIndicator } from '@/components/ui/priority-indicator';
 import LeadFormModal from '@/components/leads/LeadFormModal';
-import { PairedDetailRows, DetailGrid, KeyValue } from '@/components/ui/detail-grid';
+import { DetailGrid, KeyValue, PropertyTable } from '@/components/ui/detail-grid';
 import {
   Timeline,
   mapCreatorRemarks,
@@ -339,43 +339,72 @@ export default function LeadDetailPage() {
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="space-y-4 xl:col-span-2">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-secondary">Lead Overview</CardTitle>
+              <CardHeader className="py-2.5 px-4">
+                <CardTitle className="text-base text-secondary">Lead Overview</CardTitle>
               </CardHeader>
-              <CardContent>
-                <PairedDetailRows
+              <CardContent className="p-0 sm:p-0">
+                <PropertyTable
+                  className="rounded-none border-0 border-t"
                   rows={[
                     { left: { label: 'Name', value: lead.name }, right: { label: 'Priority', children: <PriorityIndicator priority={lead.priority} size="md" /> } },
                     { left: { label: 'Phone', value: lead.phone }, right: { label: 'Status', children: <StatusBadge status={lead.status} /> } },
-                    { left: { label: 'Email', value: lead.email || '—' }, right: { label: 'Assigned Counselor', children: isAssigned ? <AssigneeCell user={lead.assignedTo} department={lead.department} /> : <span className="text-sm text-muted-foreground">—</span> } },
+                    { left: { label: 'Email', value: lead.email || '—' }, right: { label: 'Assigned Counselor', children: isAssigned ? <AssigneeCell user={lead.assignedTo} department={lead.department} /> : <span className="text-muted-foreground">—</span> } },
                     ...(ENABLE_DEPARTMENTS
                       ? [{ left: { label: 'Department', value: lead.department?.name || '—' }, right: { label: 'Course', value: formatCourseLabel(lead.course) || '—' } }]
                       : [{ left: { label: 'Course', value: formatCourseLabel(lead.course) || '—' }, right: { label: 'Source', value: lead.source?.replace(/_/g, ' ') } }]),
                     ...(ENABLE_DEPARTMENTS
-                      ? [{ left: { label: 'Source', value: lead.source?.replace(/_/g, ' ') }, right: null }]
-                      : []),
-                    { left: { label: 'Lead Date', value: formatLeadGettingDate(lead) }, right: {
-                      label: 'Follow-up',
-                      children: lead.nextFollowUpDate ? (
-                        <span className="inline-flex flex-wrap items-center gap-x-1.5 text-sm">
-                          <span className="font-medium tabular-nums">{formatDateTime(lead.nextFollowUpDate)}</span>
-                          <FollowUpCountdown date={lead.nextFollowUpDate} />
-                          <button
-                            type="button"
-                            title="Cancel next follow-up"
-                            disabled={actionLoading === 'cancel-follow-up'}
-                            onClick={cancelNextFollowUp}
-                            className="inline-flex h-5 w-5 items-center justify-center rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
-                          >
-                            {actionLoading === 'cancel-follow-up'
-                              ? <Loader2 className="h-3 w-3 animate-spin" />
-                              : <X className="h-3 w-3" />}
-                          </button>
-                        </span>
-                      ) : '—',
-                    } },
-                    { left: { label: 'Created By', value: lead.createdBy?.name }, right: { label: 'Created At', value: formatDateTime(lead.createdAt) } },
-                    { left: { label: 'Last Activity', value: formatDateTime(lead.lastActivityAt) }, right: { label: 'Address', value: [lead.address?.city, lead.address?.state, lead.address?.pincode].filter(Boolean).join(', ') || '—' } },
+                      ? [{ left: { label: 'Source', value: lead.source?.replace(/_/g, ' ') }, right: { label: 'Lead ID', value: lead.leadId || '—' } }]
+                      : [{ left: { label: 'Lead ID', value: lead.leadId || '—' }, right: { label: 'Lead Date', value: formatLeadGettingDate(lead) } }]),
+                    ...(ENABLE_DEPARTMENTS
+                      ? [{ left: { label: 'Lead Date', value: formatLeadGettingDate(lead) }, right: {
+                        label: 'Follow-up',
+                        children: lead.nextFollowUpDate ? (
+                          <span className="inline-flex flex-wrap items-center gap-x-1.5">
+                            <span className="tabular-nums">{formatDateTime(lead.nextFollowUpDate)}</span>
+                            <FollowUpCountdown date={lead.nextFollowUpDate} />
+                            <button
+                              type="button"
+                              title="Cancel next follow-up"
+                              disabled={actionLoading === 'cancel-follow-up'}
+                              onClick={cancelNextFollowUp}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                            >
+                              {actionLoading === 'cancel-follow-up'
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <X className="h-3 w-3" />}
+                            </button>
+                          </span>
+                        ) : '—',
+                      } }]
+                      : [{ left: {
+                        label: 'Follow-up',
+                        children: lead.nextFollowUpDate ? (
+                          <span className="inline-flex flex-wrap items-center gap-x-1.5">
+                            <span className="tabular-nums">{formatDateTime(lead.nextFollowUpDate)}</span>
+                            <FollowUpCountdown date={lead.nextFollowUpDate} />
+                            <button
+                              type="button"
+                              title="Cancel next follow-up"
+                              disabled={actionLoading === 'cancel-follow-up'}
+                              onClick={cancelNextFollowUp}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                            >
+                              {actionLoading === 'cancel-follow-up'
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <X className="h-3 w-3" />}
+                            </button>
+                          </span>
+                        ) : '—',
+                      }, right: { label: 'Created By', value: lead.createdBy?.name || '—' } }]),
+                    ...(ENABLE_DEPARTMENTS
+                      ? [
+                        { left: { label: 'Created By', value: lead.createdBy?.name || '—' }, right: { label: 'Created At', value: formatDateTime(lead.createdAt) } },
+                        { left: { label: 'Last Activity', value: formatDateTime(lead.lastActivityAt) }, right: { label: 'Address', value: [lead.address?.city, lead.address?.state, lead.address?.pincode].filter(Boolean).join(', ') || '—' } },
+                      ]
+                      : [
+                        { left: { label: 'Created At', value: formatDateTime(lead.createdAt) }, right: { label: 'Last Activity', value: formatDateTime(lead.lastActivityAt) } },
+                        { left: { label: 'Address', value: [lead.address?.city, lead.address?.state, lead.address?.pincode].filter(Boolean).join(', ') || '—' }, right: null },
+                      ]),
                   ]}
                 />
               </CardContent>
