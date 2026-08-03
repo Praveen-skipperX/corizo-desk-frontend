@@ -32,13 +32,13 @@ export function PairedDetailRows({ rows, className }) {
 
 function PropertyField({ label, value, children }) {
   return (
-    <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] border-b border-border sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:border-b-0">
-      <div className="flex items-center border-r border-border bg-muted/50 px-2.5 py-1">
+    <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] border-b border-border sm:grid-cols-[7.25rem_minmax(0,1fr)] sm:border-b-0">
+      <div className="flex items-center border-r border-border bg-muted/40 px-2 py-0.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground leading-none">
           {label}
         </span>
       </div>
-      <div className="flex min-w-0 items-center px-2.5 py-1 text-[13px] leading-snug font-medium text-foreground">
+      <div className="flex min-w-0 items-center px-2 py-0.5 text-[13px] leading-snug font-medium text-foreground">
         <div className="min-w-0 break-words">{children ?? value ?? '—'}</div>
       </div>
     </div>
