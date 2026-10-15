@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Search, Moon, Sun, Bell } from 'lucide-react';
+import { Search, Moon, Sun, Bell, Menu } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { toggleTheme } from '@/store/uiSlice';
+import { toggleTheme, setSidebarOpen } from '@/store/uiSlice';
 import { useGlobalSearchQuery } from '@/store/api/apiSlice';
 import { useNavigate } from 'react-router-dom';
 
 export default function Header({ title, description }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { theme } = useSelector((state) => state.ui);
+  const { theme, sidebarOpen } = useSelector((state) => state.ui);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -24,8 +24,9 @@ export default function Header({ title, description }) {
   });
 
   return (
-    <header className="sticky top-0 z-30 h-16 shrink-0 border-b border-border bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="desk-header sticky top-0 z-20 h-20 shrink-0 border-b border-border/80 bg-card">
       <div className="flex h-full items-center justify-between gap-4 px-4 sm:px-6">
+        <Button variant="ghost" size="icon" className="-ml-2 shrink-0 md:hidden" aria-label="Open navigation" aria-controls="workspace-navigation" aria-expanded={sidebarOpen} onClick={() => dispatch(setSidebarOpen(true))}><Menu className="h-5 w-5" /></Button>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">{title}</h1>
           {description && (
@@ -39,7 +40,7 @@ export default function Header({ title, description }) {
             <Input
               placeholder="Search leads, users..."
               aria-label="Search leads and users"
-              className="h-9 w-48 pl-9 lg:w-64"
+              className="h-9 w-48 border-transparent bg-muted/80 pl-9 focus-visible:bg-card lg:w-64"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);

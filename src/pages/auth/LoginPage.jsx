@@ -4,7 +4,7 @@ import OtpInput from '@/components/ui/OtpInput';
 import PasswordInput from '@/components/ui/password-input';
 import { formatCountdown, useCountdown } from '@/hooks/useCountdown';
 import api from '@/lib/api';
-import { cn } from '@/lib/utils';
+import LoginShell from '@/components/auth/LoginShell';
 import { setUser } from '@/store/authSlice';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, ArrowLeft, Clock, Loader2 } from 'lucide-react';
@@ -57,7 +57,6 @@ export default function LoginPage() {
   const [totpError, setTotpError] = useState(false);
   const [attemptsRemaining, setAttemptsRemaining] = useState(3);
   const [otpSessionActive, setOtpSessionActive] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -74,10 +73,6 @@ export default function LoginPage() {
       remember: Boolean(rememberedEmail),
     },
   });
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const finishLogin = (payload) => {
     api.setToken(payload.accessToken);
@@ -254,48 +249,10 @@ export default function LoginPage() {
   const stepCopy = STEP_COPY[step];
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white px-4 py-6 sm:px-6">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(110, 37, 164, 0.08), transparent)',
-        }}
-      />
-
-      <div
-        className={cn(
-          'relative z-10 w-full max-w-[400px] transition-all duration-500 ease-out',
-          mounted ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
-        )}
-      >
-        <div className="mb-4 flex justify-center">
-          <img
-            src="/logo.jpg"
-            alt="Corizo"
-            className="h-10 w-auto max-w-[180px] object-contain"
-          />
-        </div>
-
-        <div className="rounded-2xl border border-border bg-white p-6 shadow-elevated sm:p-7">
-          <div className="mb-5 text-center">
-            <h1 className="text-[22px] font-semibold tracking-tight text-foreground sm:text-[24px]">
-              {stepCopy.title}
-            </h1>
-            {(step === 'otp' || stepCopy.subtitle) && (
-              <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
-                {step === 'otp' ? (
-                  <>
-                    We sent a code to <span className="font-medium text-foreground">{email}</span>
-                    {mfaPreference === 'both' && '. Then you will verify with your authenticator.'}
-                  </>
-                ) : (
-                  stepCopy.subtitle
-                )}
-              </p>
-            )}
-          </div>
-
+    <LoginShell title={stepCopy.title} subtitle={step === 'otp' ? <>
+      We sent a code to <span className="font-medium text-foreground">{email}</span>
+      {mfaPreference === 'both' && '. Then you will verify with your authenticator.'}
+    </> : stepCopy.subtitle}>
           {error && (
             <div
               role="alert"
@@ -317,11 +274,13 @@ export default function LoginPage() {
                   placeholder="name@corizo.in or username"
                   type="text"
                   autoComplete="username"
-                  className="h-11 rounded-xl"
+                  aria-invalid={Boolean(credentialsForm.formState.errors.email)}
+                  aria-describedby={credentialsForm.formState.errors.email ? 'email-error' : undefined}
+                  className="h-12 rounded-lg"
                   {...credentialsForm.register('email')}
                 />
                 {credentialsForm.formState.errors.email && (
-                  <p className="pt-0.5 text-[13px] text-red-600">
+                  <p id="email-error" className="pt-0.5 text-[13px] text-red-600">
                     {credentialsForm.formState.errors.email.message}
                   </p>
                 )}
@@ -346,11 +305,13 @@ export default function LoginPage() {
                   id="password"
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  inputClassName="h-11 rounded-xl"
+                  aria-invalid={Boolean(credentialsForm.formState.errors.password)}
+                  aria-describedby={credentialsForm.formState.errors.password ? 'password-error' : undefined}
+                  inputClassName="h-12 rounded-lg"
                   {...credentialsForm.register('password')}
                 />
                 {credentialsForm.formState.errors.password && (
-                  <p className="pt-0.5 text-[13px] text-red-600">
+                  <p id="password-error" className="pt-0.5 text-[13px] text-red-600">
                     {credentialsForm.formState.errors.password.message}
                   </p>
                 )}
@@ -367,7 +328,7 @@ export default function LoginPage() {
 
               <LoadingButton
                 type="submit"
-                className="h-11 w-full rounded-xl text-[15px] font-semibold"
+                className="h-12 w-full rounded-lg text-[14px] font-semibold"
                 loading={loading}
                 loadingText={loadingMessage || 'Signing in…'}
               >
@@ -461,7 +422,7 @@ export default function LoginPage() {
 
               <LoadingButton
                 type="button"
-                className="h-11 w-full rounded-xl text-[15px] font-medium"
+                className="h-12 w-full rounded-lg text-[14px] font-medium"
                 onClick={() => verifyAuthenticator()}
                 loading={loading}
                 loadingText="Activating…"
@@ -501,7 +462,7 @@ export default function LoginPage() {
 
               <LoadingButton
                 type="button"
-                className="h-11 w-full rounded-xl text-[15px] font-medium"
+                className="h-12 w-full rounded-lg text-[14px] font-medium"
                 onClick={() => verifyAuthenticator()}
                 loading={loading}
                 loadingText="Signing in…"
@@ -520,14 +481,6 @@ export default function LoginPage() {
               </button>
             </div>
           )}
-        </div>
-
-        <div className="mt-5 text-center">
-          <p className="text-[12px] text-muted-foreground">
-            © {new Date().getFullYear()} Corizo Desk · v1.0
-          </p>
-        </div>
-      </div>
-    </div>
+    </LoginShell>
   );
 }

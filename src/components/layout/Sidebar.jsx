@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -24,7 +25,7 @@ import api from '@/lib/api';
 const navSections = [
   {
     id: 'leads',
-    label: 'Leads',
+    label: 'Workspace',
     items: [
       { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
       { label: 'Leads', path: '/leads', icon: ContactRound, permission: 'leads.view' },
@@ -35,7 +36,7 @@ const navSections = [
   },
   {
     id: 'systems',
-    label: 'Systems',
+    label: 'Manage',
     items: [
       { label: 'Users', path: '/users', icon: Users, permission: 'users.view' },
       { label: 'Courses', path: '/courses', icon: BookOpen, permission: 'users.view' },
@@ -74,40 +75,11 @@ function hasPermission(user, key) {
 
 function NavItem({ item, sidebarOpen }) {
   const dispatch = useDispatch();
-  return (
-    <NavLink
-      to={item.path}
-      onClick={() => { if (window.innerWidth < 768) dispatch(setSidebarOpen(false)); }}
-      title={!sidebarOpen ? item.label : undefined}
-      className={({ isActive }) =>
-        cn(
-          'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
-          isActive
-            ? 'bg-brand-soft font-semibold text-primary shadow-sm ring-1 ring-inset ring-primary/15'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-        )
-      }
-    >
-      {({ isActive }) => (
-        <>
-          {isActive && (
-            <span
-              aria-hidden
-              className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
-            />
-          )}
-          <item.icon
-            className={cn(
-              'h-[18px] w-[18px] shrink-0',
-              isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-            )}
-            strokeWidth={isActive ? 2.25 : 1.75}
-          />
-          {sidebarOpen && <span>{item.label}</span>}
-        </>
-      )}
-    </NavLink>
-  );
+  return <NavLink to={item.path} aria-label={item.label} title={!sidebarOpen ? item.label : undefined}
+    onClick={() => { if (window.innerWidth < 768) dispatch(setSidebarOpen(false)); }}
+    className={({ isActive }) => cn('desk-nav-item', isActive && 'is-active', !sidebarOpen && 'is-collapsed')}>
+    {({ isActive }) => <><item.icon className="h-[19px] w-[19px] shrink-0" strokeWidth={isActive ? 2 : 1.65} />{sidebarOpen && <span className="truncate">{item.label}</span>}</>}
+  </NavLink>;
 }
 
 export default function Sidebar() {
@@ -115,110 +87,63 @@ export default function Sidebar() {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const drawerRef = useRef(null);
+  const visibleSections = navSections.map((section) => ({ ...section, items: section.items.filter((item) => hasPermission(user, item.permission)) })).filter((section) => section.items.length > 0);
+  const initials = (user?.name || 'Corizo').split(' ').filter(Boolean).slice(0, 2).map((word) => word[0]).join('');
 
-  const visibleSections = navSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => hasPermission(user, item.permission)),
-    }))
-    .filter((section) => section.items.length > 0);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)');
+    const closeOnMobile = (event) => { if (!event.matches) dispatch(setSidebarOpen(false)); };
+    media.addEventListener('change', closeOnMobile);
+    return () => media.removeEventListener('change', closeOnMobile);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!sidebarOpen || window.matchMedia('(min-width: 768px)').matches) return;
+    const previousFocus = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    drawerRef.current?.querySelector('a, button')?.focus();
+    const handleKey = (event) => {
+      if (event.key === 'Escape') dispatch(setSidebarOpen(false));
+      if (event.key !== 'Tab') return;
+      const elements = drawerRef.current?.querySelectorAll('a[href], button:not([disabled])');
+      if (!elements?.length) return;
+      const first = elements[0], last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', handleKey); previousFocus?.focus(); };
+  }, [sidebarOpen, dispatch]);
 
   const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      /* ignore */
-    }
+    try { await api.post('/auth/logout'); } catch { /* existing logout remains available when offline */ }
     api.setToken(null);
     dispatch(logoutAction());
     navigate('/login');
   };
 
-  return (
-    <aside
-      className={cn(
-        'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-white text-foreground transition-all duration-300',
-        sidebarOpen ? 'w-64' : 'w-[68px]'
-      )}
-    >
-      <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-3">
-        {sidebarOpen && (
-          <div className="flex min-w-0 flex-col justify-center gap-0.5 px-1">
-            <img
-              src="/logo.jpg"
-              alt="Corizo"
-              className="h-8 w-auto max-w-[150px] object-contain object-left"
-            />
-            <p className="truncate text-[11px] font-medium leading-tight text-muted-foreground">
-              Corizo Desk
-            </p>
-          </div>
-        )}
-        {!sidebarOpen && (
-          <div className="mx-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl">
-            <img src="/favicon.jpg" alt="Corizo" className="h-9 w-9 object-cover" />
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => dispatch(toggleSidebar())}
-          className={cn(
-            'rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-            !sidebarOpen && 'absolute right-2 top-[4.5rem]'
-          )}
-          aria-label="Toggle sidebar"
-          aria-expanded={sidebarOpen}
-        >
-          <ChevronLeft className={cn('h-4 w-4 transition-transform', !sidebarOpen && 'rotate-180')} />
+  return <aside id="workspace-navigation" ref={drawerRef} aria-label="Workspace navigation" className={cn('desk-sidebar fixed inset-y-0 left-0 z-40 flex-col transition-[width] duration-200', sidebarOpen ? 'flex w-64' : 'hidden w-20 md:flex')}>
+    <div className={cn('flex h-20 shrink-0 items-center px-5', !sidebarOpen && 'justify-center px-0')}>
+      {sidebarOpen ? <div className="flex items-center gap-3"><img src="/logo.jpg" alt="Corizo" className="h-8 w-auto max-w-[128px] mix-blend-multiply dark:mix-blend-normal" /><span className="border-l border-border pl-3 text-[10px] font-semibold tracking-[0.15em] text-muted-foreground">DESK</span></div> : <img src="/favicon.jpg" alt="Corizo" className="h-9 w-9 rounded-lg object-cover" />}
+      <button type="button" className="ml-auto rounded-md p-2 text-muted-foreground hover:bg-accent md:hidden" aria-label="Close navigation" onClick={() => dispatch(setSidebarOpen(false))}><ChevronLeft size={18} /></button>
+    </div>
+    <nav className="flex-1 overflow-y-auto px-3 pb-5 scrollbar-thin" aria-label="Main">
+      {visibleSections.map((section, index) => <div key={section.id} className={cn(index > 0 && 'mt-7')}>
+        {sidebarOpen ? <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground/75">{section.label}</p> : index > 0 && <div className="mx-auto mb-4 h-px w-6 bg-border" />}
+        <div className="space-y-1">{section.items.map((item) => <NavItem key={item.path} item={item} sidebarOpen={sidebarOpen} />)}</div>
+      </div>)}
+    </nav>
+    <div className="shrink-0 space-y-2 border-t border-border/80 p-3">
+      <button type="button" className={cn('desk-sidebar-control hidden w-full md:flex', !sidebarOpen && 'justify-center px-0')} onClick={() => dispatch(toggleSidebar())} aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} aria-expanded={sidebarOpen} aria-controls="workspace-navigation" title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}><ChevronLeft className={cn('h-[18px] w-[18px] shrink-0', !sidebarOpen && 'rotate-180')} />{sidebarOpen && <span>Collapse sidebar</span>}</button>
+      <div className={cn('flex items-center gap-1 rounded-xl bg-card p-1.5 ring-1 ring-border/70', !sidebarOpen && 'flex-col gap-2 py-2')}>
+        <button type="button" onClick={() => navigate('/settings')} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 text-left" aria-label="Open account settings" title={user?.name || 'Account settings'}>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[12px] font-semibold text-primary">{initials}</span>
+          {sidebarOpen && <span className="min-w-0"><span className="block truncate text-[12px] font-semibold text-foreground">{user?.name || 'Your account'}</span><span className="block truncate text-[10px] text-muted-foreground">{ROLE_LABELS[user?.role] || 'Workspace member'}</span></span>}
         </button>
+        <button type="button" onClick={handleLogout} aria-label="Sign out" title="Sign out" className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"><LogOut size={16} /></button>
       </div>
-
-      <nav className="flex-1 overflow-y-auto p-2.5 scrollbar-thin" aria-label="Main">
-        {visibleSections.map((section, sectionIndex) => (
-          <div
-            key={section.id}
-            className={cn('space-y-1', sectionIndex > 0 && (sidebarOpen ? 'mt-5' : 'mt-2'))}
-          >
-            {sidebarOpen ? (
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
-                {section.label}
-              </p>
-            ) : (
-              sectionIndex > 0 && (
-                <div className="mx-auto mb-2 h-px w-6 bg-border" aria-hidden />
-              )
-            )}
-            {section.items.map((item) => (
-              <NavItem key={item.path} item={item} sidebarOpen={sidebarOpen} />
-            ))}
-          </div>
-        ))}
-      </nav>
-
-      <div className="shrink-0 border-t border-border p-2.5">
-        {sidebarOpen && user && (
-          <button
-            type="button"
-            onClick={() => navigate('/settings')}
-            className="mb-2 w-full rounded-xl bg-muted/70 p-3 text-left transition-colors hover:bg-muted"
-          >
-            <p className="truncate text-[13px] font-medium text-foreground">{user.name}</p>
-            <p className="truncate text-[11px] text-muted-foreground">{ROLE_LABELS[user.role]}</p>
-            {ENABLE_DEPARTMENTS && user.department && (
-              <p className="truncate text-[11px] text-muted-foreground/80">{user.department.name}</p>
-            )}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={handleLogout}
-          aria-label="Sign out"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
-        >
-          <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-          {sidebarOpen && 'Sign Out'}
-        </button>
-      </div>
-    </aside>
-  );
+    </div>
+  </aside>;
 }

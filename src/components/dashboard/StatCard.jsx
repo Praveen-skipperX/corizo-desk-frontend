@@ -26,7 +26,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border bg-white p-5 shadow-card transition-shadow duration-200 hover:shadow-elevated',
+        'rounded-xl border border-border bg-card p-5 shadow-card transition-colors duration-150 hover:border-primary/25',
         className
       )}
     >
@@ -34,7 +34,7 @@ export function StatCard({
         <div className="flex min-w-0 flex-1 items-start gap-3">
           {Icon && (
             <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', v.iconWrap)}>
-              <Icon className="h-5 w-5" strokeWidth={1.75} />
+              <Icon className="h-[19px] w-[19px]" strokeWidth={1.65} />
             </span>
           )}
           <div className="min-w-0 pt-0.5">

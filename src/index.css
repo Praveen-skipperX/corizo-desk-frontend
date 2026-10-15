@@ -18,7 +18,7 @@
 @layer base {
   :root {
     /* Surfaces */
-    --background: 240 33% 99%;          /* #FAFAFC */
+    --background: 220 20% 97%;
     --foreground: 220 39% 11%;          /* #111827 */
     --card: 0 0% 100%;                  /* #FFFFFF */
     --card-foreground: 220 39% 11%;
@@ -53,15 +53,15 @@
     --input: 220 13% 91%;
     --ring: 274 63% 39%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
     /* White sidebar */
-    --sidebar: 0 0% 100%;
+    --sidebar: 220 20% 98%;
     --sidebar-foreground: 220 39% 11%;
     --header: 0 0% 100%;
 
-    --shadow-card: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
-    --shadow-elevated: 0 1px 2px rgba(17, 24, 39, 0.04), 0 12px 32px rgba(17, 24, 39, 0.08);
+    --shadow-card: 0 1px 2px rgba(17, 24, 39, 0.025);
+    --shadow-elevated: 0 8px 28px rgba(17, 24, 39, 0.07);
   }
 
   .dark {
@@ -225,3 +225,43 @@
 .corizo-datepicker-calendar .react-datepicker__triangle {
   display: none;
 }
+
+/* Calm workspace surfaces and a compact, Fluent-inspired navigation rail. */
+.desk-sidebar { background: hsl(var(--sidebar)); border-right: 1px solid hsl(var(--border) / .8); height: 100dvh; }
+.desk-nav-item { display: flex; align-items: center; gap: 12px; min-height: 41px; padding: 10px 13px; border-radius: 8px; color: hsl(var(--muted-foreground)); font-size: 12.5px; font-weight: 500; transition: background-color .15s, color .15s; }
+.desk-nav-item:hover { background: hsl(var(--foreground) / .045); color: hsl(var(--foreground)); }
+.desk-nav-item.is-active { color: hsl(var(--primary)); background: hsl(var(--primary) / .085); font-weight: 600; }
+.desk-nav-item.is-collapsed { justify-content: center; padding-inline: 0; }
+.desk-sidebar-control { align-items: center; gap: 12px; padding: 10px 13px; border-radius: 8px; color: hsl(var(--muted-foreground)); font-size: 11px; }
+.desk-sidebar-control:hover { color: hsl(var(--foreground)); background: hsl(var(--foreground) / .04); }
+.workspace-shell .shadow-md, .workspace-shell .shadow-sm { box-shadow: var(--shadow-card); }
+.workspace-shell .ring-1 { --tw-ring-color: hsl(var(--border) / .65); }
+.dark .workspace-shell .bg-white { background-color: hsl(var(--card)); }
+
+/* Abstract artwork is native SVG: sharp at every size, with no image request. */
+.auth-shell { display: flex; min-height: 100svh; background: hsl(var(--card)); }
+.auth-story { display: flex; width: 52%; flex-direction: column; padding: 38px 48px 28px; background: #f3f0f8; color: #292232; border-right: 1px solid #ebe6f0; }
+.auth-wordmark, .auth-mobile-brand { display: flex; align-items: center; gap: 15px; }
+.auth-wordmark img, .auth-mobile-brand img { height: 31px; width: auto; mix-blend-mode: multiply; }
+.auth-wordmark > span, .auth-mobile-brand > span { border-left: 1px solid #d7d0e1; padding-left: 15px; font-size: 10px; letter-spacing: .18em; font-weight: 600; color: #766982; }
+.auth-story-body { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 570px; width: 100%; margin: 28px auto; }
+.auth-eyebrow { display: flex; align-items: center; gap: 9px; color: #897396; font-size: 9px; letter-spacing: .19em; font-weight: 600; }
+.auth-eyebrow > span { width: 6px; height: 6px; background: #a083bc; border-radius: 50%; }
+.auth-artwork { width: 100%; max-height: min(45vh, 460px); margin: 5px auto -6px; overflow: visible; }
+.auth-story-copy h2 { font-size: clamp(30px, 3.3vw, 46px); line-height: 1.14; letter-spacing: -.045em; font-weight: 500; color: #302638; }
+.auth-story-copy p { margin-top: 18px; font-size: 13px; line-height: 1.85; color: #81758d; }
+.auth-story-footer { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #8d8196; border-top: 1px solid #e2dbe9; padding-top: 19px; }
+.auth-main { position: relative; display: flex; flex: 1; flex-direction: column; justify-content: center; padding: 80px 48px; min-height: 100svh; }
+.auth-form-wrap { width: 100%; max-width: 360px; margin: auto; }
+.auth-main-footer { position: absolute; bottom: 28px; left: 48px; right: 48px; display: flex; justify-content: space-between; gap: 12px; color: hsl(var(--muted-foreground)); font-size: 10px; }
+.auth-mobile-brand { display: none; }
+@media (min-width: 1600px) { .auth-story { padding-inline: 72px; } .auth-form-wrap { max-width: 390px; } }
+@media (max-width: 899px) {
+  .auth-story { display: none; }
+  .auth-main { padding: 104px 28px 80px; }
+  .auth-mobile-brand { display: flex; position: absolute; top: 30px; left: 28px; }
+  .auth-mobile-brand img { height: 28px; }
+  .auth-main-footer { left: 28px; right: 28px; bottom: 24px; }
+  .auth-shell { background: radial-gradient(ellipse at 100% 0%, hsl(var(--primary) / .06), transparent 45%), hsl(var(--card)); }
+}
+@media (max-height: 700px) and (min-width: 900px) { .auth-story { padding-block: 24px; } .auth-artwork { max-height: 250px; } .auth-story-body { margin-block: 20px; } .auth-story-copy h2 { font-size: 32px; } .auth-main { padding-block: 48px 75px; } }
