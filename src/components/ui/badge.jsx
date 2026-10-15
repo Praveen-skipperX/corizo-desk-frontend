@@ -1,4 +1,4 @@
-import { cn, PRIORITY_COLORS, STATUS_COLORS, formatStatus, PRIORITY_CONFIG, LEAD_STATUSES } from '@/lib/utils';
+import { cn, PRIORITY_COLORS, STATUS_COLORS, formatStatus, LEAD_STATUSES } from '@/lib/utils';
 import { PriorityIndicator } from '@/components/ui/priority-indicator';
 
 export function Badge({ children, variant = 'default', className }) {

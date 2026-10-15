@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Search, Moon, Sun, Bell } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,14 @@ export default function Header({ title, description }) {
   const { theme } = useSelector((state) => state.ui);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const { data: searchResults } = useGlobalSearchQuery(searchQuery, {
-    skip: searchQuery.length < 2,
+  const { currentData: searchResults } = useGlobalSearchQuery(debouncedSearch, {
+    skip: debouncedSearch.length < 2,
   });
 
   return (
@@ -33,6 +38,7 @@ export default function Header({ title, description }) {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search leads, users..."
+              aria-label="Search leads and users"
               className="h-9 w-48 pl-9 lg:w-64"
               value={searchQuery}
               onChange={(e) => {
@@ -42,7 +48,7 @@ export default function Header({ title, description }) {
               onFocus={() => setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 200)}
             />
-            {showResults && searchQuery.length >= 2 && searchResults?.data && (
+            {showResults && searchQuery.trim() === debouncedSearch && debouncedSearch.length >= 2 && searchResults?.data && (
               <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border bg-popover p-2 shadow-lg lg:w-96">
                 {searchResults.data.leads?.length > 0 && (
                   <div className="mb-2">
@@ -82,11 +88,11 @@ export default function Header({ title, description }) {
             )}
           </div>
 
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => dispatch(toggleTheme())}>
+          <Button aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'} variant="ghost" size="icon" className="h-9 w-9" onClick={() => dispatch(toggleTheme())}>
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button aria-label="Notifications" variant="ghost" size="icon" className="h-9 w-9">
             <Bell className="h-4 w-4" />
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
@@ -45,28 +45,23 @@ const SECTION_CONFIG = {
   },
 };
 
-function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete }) {
+function FollowUpTable({ title, emptyMessage, variant, onEdit, onComplete }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const cfg = SECTION_CONFIG[variant] || SECTION_CONFIG.today;
   const { Icon } = cfg;
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return items || [];
-    const q = search.toLowerCase();
-    return (items || []).filter(
-      (lead) =>
-        lead.name?.toLowerCase().includes(q) ||
-        lead.phone?.includes(q) ||
-        lead.leadId?.toLowerCase().includes(q) ||
-        lead.assignedTo?.name?.toLowerCase().includes(q) ||
-        lead.department?.name?.toLowerCase().includes(q)
-    );
-  }, [items, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const { currentData: data, isFetching, error, refetch } = useGetFollowUpDashboardQuery({ section: variant, page, limit: pageSize, search: debouncedSearch });
+  const paginated = data?.data?.[variant] || [];
+  const pagination = data?.data?.pagination?.[variant];
+  const totalPages = pagination?.totalPages || 1;
+  const total = pagination?.total || 0;
 
   const actionButtons = (lead) => (
     <div className="flex justify-end gap-0.5">
@@ -91,12 +86,13 @@ function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete
           </span>
           {title}
           <span className="rounded-full bg-white/80 px-2 py-0.5 text-[12px] font-bold tabular-nums text-muted-foreground ring-1 ring-border/60">
-            {items?.length || 0}
+            {total}
           </span>
         </h3>
         <div className="relative w-full sm:w-56">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label={`Search ${title}`}
             placeholder="Search..."
             className="h-8 border-border/80 bg-white pl-8 text-xs"
             value={search}
@@ -105,7 +101,7 @@ function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete
         </div>
       </div>
 
-      {paginated.length === 0 ? (
+      {error ? <div role="alert" className="p-4 text-sm text-destructive">Could not load follow-ups. <Button size="sm" onClick={refetch}>Retry</Button></div> : isFetching && !data ? <div role="status" className="h-40 animate-pulse bg-muted" aria-label="Loading follow-ups" /> : paginated.length === 0 ? (
         <p className="bg-slate-50/80 px-4 py-10 text-center font-sans text-[13px] text-muted-foreground">{emptyMessage}</p>
       ) : (
         <>
@@ -174,11 +170,11 @@ function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border/80 bg-white px-3 py-2">
               <p className="font-sans text-[12px] text-muted-foreground">
-                {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, filtered.length)} of {filtered.length}
+                {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total}
               </p>
               <div className="flex gap-1.5">
-                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage(page - 1)}>Prev</Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={isFetching || page <= 1} onClick={() => setPage(page - 1)}>Prev</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={isFetching || page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
               </div>
             </div>
           )}
@@ -190,9 +186,7 @@ function FollowUpTable({ title, items, emptyMessage, variant, onEdit, onComplete
 
 export default function FollowUpDashboardTables({ onEditLead }) {
   const toast = useToast();
-  const { data, isLoading, refetch } = useGetFollowUpDashboardQuery();
   const [updateLead] = useUpdateLeadMutation();
-  const dashboard = data?.data || {};
 
   const handleComplete = async (lead) => {
     try {
@@ -202,36 +196,23 @@ export default function FollowUpDashboardTables({ onEditLead }) {
         status: lead.status === 'follow_up' ? 'connected' : lead.status,
       }).unwrap();
       toast.success('Follow-up completed', lead.leadId || lead.name);
-      refetch();
     } catch (err) {
       toast.error('Could not complete follow-up', err.data?.message || err.message);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-40 items-center justify-center rounded-xl border border-dashed bg-white">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   const sections = [
-    { key: 'today', title: "Today's Follow-ups", items: dashboard.today, empty: 'No follow-ups scheduled for today.' },
-    { key: 'tomorrow', title: "Tomorrow's Follow-ups", items: dashboard.tomorrow, empty: 'No follow-ups scheduled for tomorrow.' },
-    ...(dashboard.overdue?.length > 0
-      ? [{ key: 'overdue', title: 'Overdue Follow-ups', items: dashboard.overdue, empty: 'No overdue follow-ups.' }]
-      : []),
+    { key: 'today', title: "Today's Follow-ups", empty: 'No follow-ups scheduled for today.' },
+    { key: 'tomorrow', title: "Tomorrow's Follow-ups", empty: 'No follow-ups scheduled for tomorrow.' },
+    { key: 'overdue', title: 'Overdue Follow-ups', empty: 'No overdue follow-ups.' },
   ];
 
   return (
-    <div className="flex flex-col gap-10">
-      {sections.map((section, index) => (
+    <div className="flex flex-col gap-5">
+      {sections.map((section) => (
         <div key={section.key}>
-          {index > 0 && <div className="mb-10 h-1 shrink-0 rounded-full bg-border shadow-sm" aria-hidden />}
           <FollowUpTable
             title={section.title}
-            items={section.items}
             emptyMessage={section.empty}
             variant={section.key}
             onEdit={onEditLead}

@@ -1,53 +1,25 @@
+import client from '../../lib/api';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_URL || '/api',
   credentials: 'include',
+  timeout: 30000,
   prepareHeaders: (headers) => {
-    const token = localStorage.getItem('accessToken');
+    const token = client.getToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
     return headers;
   },
 });
 
-let refreshPromise = null;
-
-const AUTH_NO_REFRESH = [
-  '/auth/refresh',
-  '/auth/employee/login',
-  '/auth/super-admin/login',
-  '/auth/otp/',
-  '/auth/employee/verify-totp',
-  '/auth/super-admin/verify-totp',
-  '/auth/logout',
-];
-
-const shouldSkipRefresh = (url = '') =>
-  AUTH_NO_REFRESH.some((path) => url.includes(path));
-
 const baseQueryWithReauth = async (args, api, extraOptions) => {
   let result = await baseQuery(args, api, extraOptions);
+  if (result.error?.status === 401 && await client.refreshToken()) {
+    result = await baseQuery(args, api, extraOptions);
+  }
   if (result.error?.status === 401) {
-    const url = typeof args === 'string' ? args : args?.url || '';
-    if (shouldSkipRefresh(url)) {
-      return result;
-    }
-    if (!refreshPromise) {
-      refreshPromise = baseQuery({ url: '/auth/refresh', method: 'POST' }, api, extraOptions)
-        .finally(() => {
-          refreshPromise = null;
-        });
-    }
-    const refreshResult = await refreshPromise;
-    if (refreshResult.data?.data?.accessToken) {
-      localStorage.setItem('accessToken', refreshResult.data.data.accessToken);
-      result = await baseQuery(args, api, extraOptions);
-    } else if (refreshResult.data?.accessToken) {
-      localStorage.setItem('accessToken', refreshResult.data.accessToken);
-      result = await baseQuery(args, api, extraOptions);
-    } else {
-      localStorage.removeItem('accessToken');
-    }
+    client.setToken(null);
+    api.dispatch({ type: 'auth/logout' });
   }
   return result;
 };
@@ -111,7 +83,7 @@ export const apiSlice = createApi({
       keepUnusedDataFor: 60,
     }),
     getFollowUpDashboard: builder.query({
-      query: () => '/leads/follow-ups/dashboard',
+      query: (params) => ({ url: '/leads/follow-ups/dashboard', params }),
       providesTags: ['FollowUp', 'Dashboard'],
       keepUnusedDataFor: 60,
     }),

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { cn, ROLES, ROLE_LABELS } from '@/lib/utils';
 import { ENABLE_DEPARTMENTS } from '@/lib/features';
-import { toggleSidebar } from '@/store/uiSlice';
+import { toggleSidebar, setSidebarOpen } from '@/store/uiSlice';
 import { logout as logoutAction } from '@/store/authSlice';
 import api from '@/lib/api';
 
@@ -53,7 +53,7 @@ const navSections = [
 function hasPermission(user, key) {
   if (!user || !key) return false;
   if (user.role === ROLES.SUPER_ADMIN) return true;
-  if (Array.isArray(user.permissionKeys) && user.permissionKeys.includes(key)) return true;
+  if (Array.isArray(user.permissionKeys)) return user.permissionKeys.includes(key);
   if (Array.isArray(user.permissions)) {
     return user.permissions.some((p) => (typeof p === 'string' ? p : p.key) === key);
   }
@@ -73,9 +73,11 @@ function hasPermission(user, key) {
 }
 
 function NavItem({ item, sidebarOpen }) {
+  const dispatch = useDispatch();
   return (
     <NavLink
       to={item.path}
+      onClick={() => { if (window.innerWidth < 768) dispatch(setSidebarOpen(false)); }}
       title={!sidebarOpen ? item.label : undefined}
       className={({ isActive }) =>
         cn(
@@ -165,6 +167,7 @@ export default function Sidebar() {
             !sidebarOpen && 'absolute right-2 top-[4.5rem]'
           )}
           aria-label="Toggle sidebar"
+          aria-expanded={sidebarOpen}
         >
           <ChevronLeft className={cn('h-4 w-4 transition-transform', !sidebarOpen && 'rotate-180')} />
         </button>
@@ -209,6 +212,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={handleLogout}
+          aria-label="Sign out"
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
         >
           <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />

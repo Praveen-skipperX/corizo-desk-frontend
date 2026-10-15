@@ -8,6 +8,8 @@ export default function LoadingState({
 }) {
   return (
     <div
+      role="status"
+      aria-live="polite"
       className={cn(
         'flex flex-col items-center justify-center gap-3 text-muted-foreground',
         fullPage ? 'min-h-[50vh]' : 'py-12',

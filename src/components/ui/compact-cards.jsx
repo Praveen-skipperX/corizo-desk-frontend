@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn, formatDateTime, formatLeadGettingDate } from '@/lib/utils';
 import { ENABLE_DEPARTMENTS } from '@/lib/features';
-import { KeyValue, PairedDetailRows, CardActionFooter } from '@/components/ui/detail-grid';
+import { PairedDetailRows, CardActionFooter } from '@/components/ui/detail-grid';
 import { StatusBadge } from '@/components/ui/badge';
 import { PriorityIndicator } from '@/components/ui/priority-indicator';
 import { Button } from '@/components/ui/button';

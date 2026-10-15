@@ -35,10 +35,11 @@ import { useGetDashboardQuery } from '@/store/api/apiSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn, formatRelativeTime, ROLES, formatStatus } from '@/lib/utils';
 import { ENABLE_DEPARTMENTS } from '@/lib/features';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const { user } = useSelector((state) => state.auth);
-  const { data, isLoading, error } = useGetDashboardQuery(undefined, {
+  const { data, isLoading, isFetching, error, refetch } = useGetDashboardQuery(undefined, {
     // Reuse cached dashboard for 60s when navigating back
     refetchOnMountOrArgChange: 60,
   });
@@ -63,11 +64,11 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <div>
         <Header title="Dashboard" />
-        <div className="p-6 text-center font-sans text-destructive">Failed to load dashboard data</div>
+        <div role="alert" className="space-y-3 p-6 text-center font-sans text-destructive"><p>Failed to load dashboard data</p><Button onClick={refetch}>Try again</Button></div>
       </div>
     );
   }
@@ -85,6 +86,8 @@ export default function DashboardPage() {
       <Header title="Dashboard" description={roleDescriptions[user?.role]} />
 
       <div className="flex-1 space-y-5 bg-muted/50 p-4 sm:p-6">
+        {isFetching && <p role="status" className="text-sm text-muted-foreground">Refreshing dashboard...</p>}
+        {error && <div role="alert" className="flex items-center gap-3 text-sm text-destructive">Refresh failed. Displayed metrics may be out of date.<Button size="sm" onClick={refetch}>Retry</Button></div>}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Total Leads"

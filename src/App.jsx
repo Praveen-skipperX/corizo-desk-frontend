@@ -1,31 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Provider, useDispatch } from 'react-redux';
 import store from './store';
 import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute, { RoleRoute, PermissionRoute, ROLES } from './components/auth/ProtectedRoute';
-import LoginPage from './pages/auth/LoginPage';
-import SetupPasswordPage from './pages/auth/SetupPasswordPage';
-import DashboardPage from './pages/dashboard/DashboardPage';
-import LeadsPage from './pages/leads/LeadsPage';
-import CreateLeadPage from './pages/leads/CreateLeadPage';
-import LeadDetailPage from './pages/leads/LeadDetailPage';
-import FollowUpsPage from './pages/follow-ups/FollowUpsPage';
-import ConnectedSheetsPage from './pages/google-sheets/ConnectedSheetsPage';
-import AddSheetPage from './pages/google-sheets/AddSheetPage';
-import SyncHistoryPage from './pages/google-sheets/SyncHistoryPage';
-import SheetSettingsPage from './pages/google-sheets/SheetSettingsPage';
-import SheetDetailPage from './pages/google-sheets/SheetDetailPage';
-import UsersPage from './pages/users/UsersPage';
-import CoursesPage from './pages/courses/CoursesPage';
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const SetupPasswordPage = lazy(() => import('./pages/auth/SetupPasswordPage'));
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
+const LeadsPage = lazy(() => import('./pages/leads/LeadsPage'));
+const CreateLeadPage = lazy(() => import('./pages/leads/CreateLeadPage'));
+const LeadDetailPage = lazy(() => import('./pages/leads/LeadDetailPage'));
+const FollowUpsPage = lazy(() => import('./pages/follow-ups/FollowUpsPage'));
+const ConnectedSheetsPage = lazy(() => import('./pages/google-sheets/ConnectedSheetsPage'));
+const AddSheetPage = lazy(() => import('./pages/google-sheets/AddSheetPage'));
+const SyncHistoryPage = lazy(() => import('./pages/google-sheets/SyncHistoryPage'));
+const SheetSettingsPage = lazy(() => import('./pages/google-sheets/SheetSettingsPage'));
+const SheetDetailPage = lazy(() => import('./pages/google-sheets/SheetDetailPage'));
+const UsersPage = lazy(() => import('./pages/users/UsersPage'));
+const CoursesPage = lazy(() => import('./pages/courses/CoursesPage'));
 // Departments page — restore via ENABLE_DEPARTMENTS in src/lib/features.js
-import DepartmentsPage from './pages/departments/DepartmentsPage';
+const DepartmentsPage = lazy(() => import('./pages/departments/DepartmentsPage'));
 import { ENABLE_DEPARTMENTS } from './lib/features';
-import ReportsPage from './pages/reports/ReportsPage';
-import AuditLogsPage from './pages/audit/AuditLogsPage';
-import SecurityPage from './pages/security/SecurityPage';
-import SettingsPage from './pages/settings/SettingsPage';
-import SystemSettingsPage from './pages/settings/SystemSettingsPage';
+const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
+const AuditLogsPage = lazy(() => import('./pages/audit/AuditLogsPage'));
+const SecurityPage = lazy(() => import('./pages/security/SecurityPage'));
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
+const SystemSettingsPage = lazy(() => import('./pages/settings/SystemSettingsPage'));
 import api from './lib/api';
 import { setUser, setLoading, logout } from './store/authSlice';
 import { setTheme } from './store/uiSlice';
@@ -47,14 +47,13 @@ function AuthInitializer({ children }) {
     const initAuth = async () => {
       // Prefer restoring via refresh cookie when access token is missing or stale.
       // Stay signed in on this device until explicit logout.
-      let token = api.getToken();
+      const token = api.getToken();
       if (!token) {
         const refreshed = await api.refreshToken();
         if (!refreshed) {
           dispatch(setLoading(false));
           return;
         }
-        token = api.getToken();
       }
 
       const loadMe = async () => {
@@ -133,7 +132,7 @@ export default function App() {
         <ToastProvider>
           <BrowserRouter>
             <AuthInitializer>
-              <AppRoutes />
+              <Suspense fallback={<div role="status" className="p-6 text-sm text-muted-foreground">Loading page...</div>}><AppRoutes /></Suspense>
             </AuthInitializer>
           </BrowserRouter>
         </ToastProvider>

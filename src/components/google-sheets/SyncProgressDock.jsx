@@ -179,7 +179,7 @@ export default function SyncProgressDock() {
   );
   const invalidatedRef = useRef(new Set());
   const emptyPollsRef = useRef(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [pollError, setPollError] = useState('');
   const [busyId, setBusyId] = useState('');
 
@@ -245,7 +245,7 @@ export default function SyncProgressDock() {
   // Only hide long-abandoned queue ghosts that never started.
   const activeItems = rawActive.filter((item) => {
     const startedMs = item.startedAt ? new Date(item.startedAt).getTime() : 0;
-    const elapsed = startedMs ? Date.now() - startedMs : 0;
+    const elapsed = startedMs ? now - startedMs : 0;
     const stuckInQueue =
       item.status === 'pending'
       && (item.phase === 'queued' || !item.phase)

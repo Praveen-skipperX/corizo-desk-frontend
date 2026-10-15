@@ -28,11 +28,7 @@ export function usePermissions() {
 
 export function useHasAnyPermission(...keys) {
   const user = useSelector((state) => state.auth.user);
-  return useMemo(
-    () => keys.some((k) => userHasPermission(user, k)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user, keys.join(',')]
-  );
+  return keys.some((key) => userHasPermission(user, key));
 }
 
 export default usePermission;

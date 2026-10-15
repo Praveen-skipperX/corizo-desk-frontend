@@ -278,10 +278,6 @@ export default function UserSettingsPage() {
 
       }
 
-    } catch (err) {
-
-      throw err;
-
     } finally {
 
       setLoading('');

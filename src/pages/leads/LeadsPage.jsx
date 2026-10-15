@@ -174,7 +174,7 @@ export default function LeadsPage() {
       setSearchParams(next, { replace: true });
     }
   };
-  const { data, isLoading, isFetching, refetch } = useGetLeadsQuery({
+  const { data, isLoading, isFetching, error: queryError, refetch } = useGetLeadsQuery({
     page,
     limit: pageSize,
     ...listFilters,
@@ -709,6 +709,7 @@ export default function LeadsPage() {
         </form>
 
         <div className="hidden md:block">
+          {queryError && <div role="alert" className="mb-3 flex items-center gap-3 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Could not load leads. <Button size="sm" variant="outline" onClick={refetch}>Retry</Button></div>}
           <DataTable
             columns={columns}
             data={leads}

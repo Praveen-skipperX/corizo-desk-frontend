@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { useGetUsersQuery, useGetDepartmentsQuery } from '@/store/api/apiSlice';
-import { ROLE_LABELS, ROLES } from '@/lib/utils';
+import { ROLE_LABELS } from '@/lib/utils';
 import { ENABLE_DEPARTMENTS } from '@/lib/features';
 import { Plus, UserCheck, UserX, Unlock, Pencil, Trash2, KeyRound } from 'lucide-react';
 import ResetPasswordModal from '@/components/users/ResetPasswordModal';

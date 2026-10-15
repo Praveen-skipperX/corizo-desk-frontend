@@ -221,6 +221,14 @@ export function DataTable({
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
+                    aria-sort={header.column.getIsSorted() === 'asc' ? 'ascending' : header.column.getIsSorted() === 'desc' ? 'descending' : 'none'}
+                    tabIndex={header.column.getCanSort() ? 0 : undefined}
+                    onKeyDown={(event) => {
+                      if (header.column.getCanSort() && ['Enter', ' '].includes(event.key)) {
+                        event.preventDefault();
+                        header.column.getToggleSortingHandler()?.(event);
+                      }
+                    }}
                     key={header.id}
                     className={cn(
                       'relative overflow-hidden whitespace-nowrap text-left text-[11px] font-semibold uppercase tracking-wider text-foreground/65',
@@ -274,6 +282,13 @@ export function DataTable({
                     onRowClick && 'cursor-pointer'
                   )}
                   onClick={() => onRowClick?.(row.original, row)}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={(event) => {
+                    if (onRowClick && event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) {
+                      event.preventDefault();
+                      onRowClick(row.original, row);
+                    }
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td

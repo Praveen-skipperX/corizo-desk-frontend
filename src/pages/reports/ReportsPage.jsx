@@ -1,3 +1,4 @@
+import api from '@/lib/api';
 import { useState } from 'react';
 import Header from '@/components/layout/Header';
 import LoadingButton from '@/components/ui/loading-button';
@@ -34,15 +35,7 @@ export default function ReportsPage() {
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
 
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/reports?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
-
-      if (!response.ok) throw new Error('Export failed');
-
-      const blob = await response.blob();
+      const blob = await api.request(`/reports?${params}`, { responseType: 'blob' });
       const ext = format === 'excel' ? 'xlsx' : format;
       const slug = selectedLabel.toLowerCase().replace(/\s+/g, '-');
       const url = URL.createObjectURL(blob);

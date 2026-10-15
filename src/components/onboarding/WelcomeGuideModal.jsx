@@ -21,7 +21,6 @@ import {
   DialogBody,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import LoadingButton from '@/components/ui/loading-button';
 import { ROLES, ROLE_LABELS } from '@/lib/utils';
 import { setUser } from '@/store/authSlice';

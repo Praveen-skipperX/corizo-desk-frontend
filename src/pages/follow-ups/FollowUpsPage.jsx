@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FollowUpItemCard } from '@/components/ui/compact-cards';
@@ -82,18 +83,6 @@ const TABS = [
   { id: 'completed', label: 'Completed', variant: 'completed', countKey: 'completed' },
 ];
 
-function startOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function endOfDay(date) {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
 function followUpToLeadShape(followUp) {
   const lead = followUp.lead || {};
   return {
@@ -106,33 +95,6 @@ function followUpToLeadShape(followUp) {
     nextFollowUpDate: followUp.scheduledDate,
     department: followUp.department,
   };
-}
-
-function bucketFollowUps(followUps) {
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
-  const tomorrowStart = new Date(todayEnd);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-  tomorrowStart.setHours(0, 0, 0, 0);
-  const tomorrowEnd = endOfDay(tomorrowStart);
-
-  const completed = [];
-  const upcoming = [];
-
-  followUps.forEach((f) => {
-    const scheduled = new Date(f.scheduledDate);
-    if (f.status === 'completed') {
-      completed.push(followUpToLeadShape(f));
-      return;
-    }
-    if (f.status === 'cancelled') return;
-    if (scheduled > tomorrowEnd) {
-      upcoming.push(followUpToLeadShape(f));
-    }
-  });
-
-  return { upcoming, completed };
 }
 
 function FollowUpList({ title, items, variant, emptyMessage, description }) {
@@ -171,25 +133,18 @@ function FollowUpList({ title, items, variant, emptyMessage, description }) {
 
 export default function FollowUpsPage() {
   const [activeTab, setActiveTab] = useState('today');
-  const { data, isLoading: dashboardLoading } = useGetFollowUpDashboardQuery();
-  const { data: followUpsData, isLoading: followUpsLoading } = useGetFollowUpsQuery({ limit: 200, sortOrder: 'asc' });
-
+  const [page, setPage] = useState(1);
+  const isLeadBucket = ['today', 'tomorrow', 'overdue'].includes(activeTab);
+  const { currentData: data, isFetching: dashboardLoading, error: dashboardError, refetch: refreshDashboard } = useGetFollowUpDashboardQuery({ section: isLeadBucket ? activeTab : 'today', page, limit: 25 }, { skip: !isLeadBucket });
+  const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const upcomingFrom = new Date(new Date(`${todayIST}T00:00:00+05:30`).getTime() + 2 * 86400000).toISOString();
+  const { currentData: followUpsData, isFetching: followUpsLoading, error: followUpsError, refetch: refreshFollowUps } = useGetFollowUpsQuery({ page, limit: 25, sortOrder: 'asc', status: activeTab === 'completed' ? 'completed' : 'scheduled', ...(activeTab === 'upcoming' ? { dateFrom: upcomingFrom } : {}) }, { skip: isLeadBucket });
   const dashboard = data?.data || {};
-  const followUps = followUpsData?.data || [];
-  const { upcoming, completed } = useMemo(() => bucketFollowUps(followUps), [followUps]);
-
-  const buckets = {
-    today: dashboard.today || [],
-    tomorrow: dashboard.tomorrow || [],
-    overdue: dashboard.overdue || [],
-    upcoming,
-    completed,
-  };
-
-  const isLoading = dashboardLoading || followUpsLoading;
+  const activeItems = isLeadBucket ? dashboard[activeTab] || [] : (followUpsData?.data || []).map(followUpToLeadShape);
+  const pagination = isLeadBucket ? dashboard.pagination?.[activeTab] : followUpsData?.pagination;
+  const error = isLeadBucket ? dashboardError : followUpsError;
+  const isLoading = isLeadBucket ? dashboardLoading : followUpsLoading;
   const activeConfig = TABS.find((t) => t.id === activeTab) || TABS[0];
-  const activeItems = buckets[activeTab] || [];
-  const totalCount = Object.values(buckets).reduce((sum, items) => sum + (items?.length || 0), 0);
 
   const tabDescriptions = {
     today: 'Due today',
@@ -219,12 +174,12 @@ export default function FollowUpsPage() {
           <div className="flex flex-wrap gap-2 rounded-lg border border-primary/20 bg-white p-1.5 shadow-sm">
             {TABS.map((tab) => {
               const cfg = SECTION_CONFIG[tab.variant];
-              const count = buckets[tab.countKey]?.length || 0;
+              const count = isLeadBucket && dashboard.pagination?.[tab.id] ? dashboard.pagination[tab.id].total : tab.id === activeTab ? pagination?.total : null;
               return (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => { setActiveTab(tab.id); setPage(1); }}
                   className={cn(
                     'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                     activeTab === tab.id
@@ -240,7 +195,7 @@ export default function FollowUpsPage() {
                       activeTab === tab.id ? 'bg-white/20 text-primary-foreground' : cfg.badge
                     )}
                   >
-                    {count}
+                    {count ?? '-'}
                   </span>
                 </button>
               );
@@ -248,21 +203,11 @@ export default function FollowUpsPage() {
           </div>
         )}
 
-        {isLoading ? (
+        {error ? <div role="alert" className="p-4 text-sm text-destructive">Could not load follow-ups. <Button onClick={isLeadBucket ? refreshDashboard : refreshFollowUps}>Retry</Button></div> : isLoading ? (
           <div className="space-y-3">
             <LoadingState message="Loading follow-ups..." className="py-4" />
             {Array.from({ length: 2 }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
-        ) : totalCount === 0 ? (
-          <Card className="border border-dashed border-primary/40 bg-white shadow-sm">
-            <CardContent className="py-10 text-center">
-              <CalendarCheck className="mx-auto mb-2 h-9 w-9 text-primary" strokeWidth={1.75} />
-              <p className="font-sans text-[15px] font-semibold text-secondary">All clear for now</p>
-              <p className="mt-0.5 font-sans text-[13px] text-muted-foreground">
-                No follow-ups in any bucket.
-              </p>
-            </CardContent>
-          </Card>
         ) : (
           <FollowUpList
             title={activeConfig.label}
@@ -272,6 +217,7 @@ export default function FollowUpsPage() {
             emptyMessage={tabEmptyMessages[activeTab]}
           />
         )}
+        {pagination?.totalPages > 1 && <div className="flex items-center justify-between gap-3 text-sm"><span>Page {page} of {pagination.totalPages} · {pagination.total} records</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={isLoading || page <= 1} onClick={() => setPage(page - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={isLoading || !pagination.hasNext} onClick={() => setPage(page + 1)}>Next</Button></div></div>}
       </div>
     </div>
   );

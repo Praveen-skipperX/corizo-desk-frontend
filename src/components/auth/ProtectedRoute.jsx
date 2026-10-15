@@ -35,11 +35,11 @@ function userHasPermission(user, permission) {
   // Super Admin always has full access
   if (user.role === ROLES.SUPER_ADMIN) return true;
 
-  if (Array.isArray(user.permissionKeys) && user.permissionKeys.length > 0) {
+  if (Array.isArray(user.permissionKeys)) {
     return user.permissionKeys.includes(permission);
   }
 
-  if (Array.isArray(user.permissions) && user.permissions.length > 0) {
+  if (Array.isArray(user.permissions)) {
     return user.permissions.some((p) => (typeof p === 'string' ? p : p?.key) === permission);
   }
 
@@ -78,9 +78,6 @@ export default function ProtectedRoute({ children, roles, permission, permission
   if (requiredPermissions.length) {
     const allowed = requiredPermissions.some((key) => userHasPermission(user, key));
     if (!allowed) {
-      if (roles?.includes(user?.role)) {
-        return children;
-      }
       return <Navigate to="/dashboard" replace />;
     }
   } else if (roles && !roles.includes(user?.role)) {

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = import.meta.env?.VITE_API_URL || '/api';
 
 /** Endpoints that must not trigger a refresh retry (login / MFA / refresh itself). */
 const AUTH_NO_REFRESH = [
@@ -14,19 +14,24 @@ const AUTH_NO_REFRESH = [
 const shouldSkipRefresh = (endpoint = '') =>
   AUTH_NO_REFRESH.some((path) => endpoint.includes(path));
 
-class ApiClient {
+export class ApiClient {
   constructor() {
     this.baseUrl = API_URL;
     this._refreshPromise = null;
+    this._token = null;
+    this._authGeneration = 0;
+    // Restore sessions via the httpOnly cookie; remove legacy persistent JWTs.
+    localStorage.removeItem('accessToken');
   }
 
   getToken() {
-    return localStorage.getItem('accessToken');
+    return this._token;
   }
 
   setToken(token) {
-    if (token) localStorage.setItem('accessToken', token);
-    else localStorage.removeItem('accessToken');
+    this._token = token || null;
+    this._authGeneration += 1;
+    localStorage.removeItem('accessToken');
   }
 
   async request(endpoint, options = {}) {
@@ -47,6 +52,7 @@ class ApiClient {
       ...options,
       headers,
       credentials: 'include',
+      signal: options.signal || AbortSignal.timeout(30000),
     });
 
     // Refresh on 401 for /auth/me and all non-login auth routes so page reload
@@ -59,6 +65,7 @@ class ApiClient {
           ...options,
           headers,
           credentials: 'include',
+          signal: options.signal || AbortSignal.timeout(30000),
         });
         return this.handleResponse(retryResponse, { ...options, _retry: true });
       }
@@ -75,7 +82,12 @@ class ApiClient {
   async handleResponse(response, options = {}) {
     if (options.responseType === 'blob') {
       if (!response.ok) {
-        const err = new Error('Request failed');
+        let message = 'Request failed';
+        if (response.headers.get('content-type')?.includes('application/json')) {
+          const data = await response.json();
+          message = data.message || message;
+        }
+        const err = new Error(message);
         err.response = response;
         throw err;
       }
@@ -104,15 +116,19 @@ class ApiClient {
   /** Single-flight refresh so parallel 401s don't invalidate each other. */
   async refreshToken() {
     if (this._refreshPromise) return this._refreshPromise;
+    const generation = this._authGeneration;
 
     this._refreshPromise = (async () => {
       try {
         const response = await fetch(`${this.baseUrl}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(15000),
         });
         if (!response.ok) return false;
         const data = await response.json();
+        if (generation !== this._authGeneration) return false;
         this.setToken(data.data.accessToken);
         return true;
       } catch {

@@ -8,7 +8,7 @@ const getInitialTheme = () => {
 };
 
 const initialState = {
-  sidebarOpen: true,
+  sidebarOpen: typeof window === 'undefined' || window.matchMedia('(min-width: 768px)').matches,
   theme: getInitialTheme(),
   globalSearchOpen: false,
 };

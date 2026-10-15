@@ -158,7 +158,7 @@ export function parseSheetDate(value) {
   if (!Number.isNaN(parsed.getTime())) return parsed;
 
   // dd/mm/yyyy or dd-mm-yyyy
-  const m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  const m = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
   if (m) {
     const day = Number(m[1]);
     const month = Number(m[2]) - 1;
